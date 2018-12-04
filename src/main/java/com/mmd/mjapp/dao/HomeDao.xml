@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.mmd.mjapp.dao.HomeDao">
+    <select id="getCliassify" resultType="map">
+        select id, `name` from classify where recsts = '1' order by `order`
+    </select>
+
+    <!--最多加载五个-->
+    <select id="getCarousel" resultType="map">
+        select id, pid, imgurl from homecarousel where recsts = '1' order by orderby desc limit 5
+    </select>
+
+    <select id="getBrand" resultType="merchant">
+        select mer_id, mer_name, mer_shortname, mer_ename, mer_desc, mer_address,
+         mer_homeicon, mer_homeimg, mer_linkman, mer_linkphone, mer_weixin, mer_qq
+          from merchant where recsts = '1' order by hotval desc, hits desc
+    </select>
+
+    <select id="getHotWord" resultType="map">
+        select * from hotword
+    </select>
+
+    <select id="hasNews" resultType="int">
+        select count(*) from message m
+        where (type = '1' and (select count(*) from msgreadinfo where uid = #{uid} and m_id = m.id) = 0)
+        or (type = '2'and isread = 1 and (user_id = #{uid} or user_id is null or user_id = ''))
+
+    </select>
+
+    <select id="getSystemMsg" resultType="map">
+        select id, content, date_format(crtdate, '%Y-%m-%d %T') msgDate from message m where type = '1' order by crtdate DESC limit 1
+    </select>
+
+    <select id="getBasicMsg" resultType="map">
+        select id, content, date_format(crtdate, '%Y-%m-%d %T') msgDate from message m
+        where type = '2' and (user_id = #{uid} or user_id is null or user_id = '')
+        order by crtdate DESC limit 1
+    </select>
+
+    <select id="getLogisticsMsg" resultType="map">
+        select id, opertext content, date_format(crtdate, '%Y-%m-%d %T') msgDate from logistics where uid = #{uid} order by crtdate DESC limit 1
+    </select>
+
+    <select id="getSysMsgList" resultType="map">
+        select id, title, content, date_format(crtdate, '%Y-%m-%d %T') msgDate from message where type = #{type}
+    </select>
+
+    <select id="getMsgDetail" resultType="map">
+        select id, title, content, pic_url picUrl, date_format(crtdate, '%Y-%m-%d %T') msgDate from message where id = #{id}
+    </select>
+
+</mapper>

@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.mmd.mjapp.dao.ProductDao">
+    <insert id="insertBrows">
+        insert into browhistory(pid, uid, visit_ip, visit_date)
+        VALUES (#{pid}, #{uid}, #{ipAddr}, now())
+        on DUPLICATE key
+        update visit_date = now()
+    </insert>
+
+    <select id="queryProdListByStore" resultType="map">
+        select pid, pname, shopprice, shopmmdprice,
+        homeimg from productsinfo p
+        where mer_id = #{id} and p.recsts = '1' and state = 1
+    </select>
+
+    <select id="queryProdListByKey" resultType="map">
+        select pid, pname, shopprice, shopmmdprice, m.mer_name,
+        homeimg from productsinfo p left join merchant m on p.mer_id = m.mer_id
+        where p.recsts = '1' and state = 1
+        and (pname like concat('%', #{key}, '%') or title like concat('%', #{key}, '%')
+         or m.mer_ename like concat('%', #{key}, '%') or m.mer_name like concat('%', #{key}, '%'))
+    </select>
+
+    <select id="queryProdDetail"  resultMap="prodMap">
+        select p.pid, pname, title, `desc`, homeimg, paramimg, shopprice, shopmmdprice,
+        weight, volume, isfree, inventory, sell, commentcount, bestcount, mediumccount, badcount, average,
+        pc.pd_url, pc.id, ps.content, ps.sid, pd.img, pd.id pdid,
+        sku.sku_id, sku.sku_val, sku.price, sku.mmdprice, sku.repertory, sku.salenum
+        from productsinfo p
+        left join prod_carousal pc on p.pid = pc.pid
+        left join prod_sku sku on p.pid = sku.pid
+        left join prod_detailimg pd on p.pid = pd.pid
+        left join prod_service ps on  concat(',', p.service_ids, ',') like concat('%,', ps.sid, ',%')
+        where p.pid = #{pid} and p.state = 1 order by pc.pd_order, pd.ord
+    </select>
+
+    <select id="getProdPropInfo" resultType="map" resultMap="propInfoMap">
+        select rel.prop_name_id, (select prop_name from prod_skupropname where prop_id = rel.prop_name_id) prop_name,
+         rel.prop_val_id,
+         (select prop_val from prod_skupropval pvl
+          where pvl.prop_name_id = rel.prop_name_id and pvl.prop_id = rel.prop_val_id) prop_valname
+         from prod_proprel rel where rel.pid = #{pid}
+    </select>
+
+    <select id="collectProd">
+        insert into prod_collect(pid, uid, coll_date)
+        VALUES (#{pid}, #{uid}, now())
+    </select>
+
+    <select id="getBrowDateByGorupVisDate" resultType="map">
+        select count(*) ct, DATE_FORMAT(visit_date, '%Y-%m-%d') vs_day
+        from browhistory where uid = #{uid} and visit_date >= date_sub(curdate(), INTERVAL 30 DAY)
+        GROUP BY DATE_FORMAT(visit_date, '%Y-%m-%d') order by visit_date desc
+    </select>
+
+    <select id="getBrowList" resultType="map" resultMap="browDate">
+        <foreach collection="dateList" separator="UNION ALL" item="date">
+            (select '${date}' vdate, b.id, b.pid, date_format(b.visit_date, '%Y-%m-%d %T') visit_date, p.pname, p.title, p.homeimg
+            from browhistory b left join productsinfo p on b.pid = p.pid where b.uid = #{uid})
+        </foreach>
+    </select>
+
+    <!--查询常用词-->
+    <select id="getSigthWord" resultType="map">
+        select * from sightword
+    </select>
+
+    <resultMap id="browDate" type="map">
+        <id column="vdate" property="vdate" />
+        <collection property="list" ofType="map" javaType="ArrayList">
+            <id column="id" property="id"/>
+            <result column="pid" property="pid"/>
+            <result column="visit_date" property="visit_date"/>
+            <result column="pname" property="pname"/>
+            <result column="title" property="title"/>
+            <result column="homeimg" property="homeimg"/>
+        </collection>
+    </resultMap>
+
+    <delete id="delCollectProd">
+        DELETE FROM prod_collect where id in <foreach collection="ids" item="id" open="(" close=")" separator=",">#{id}</foreach>
+    </delete>
+
+    <resultMap id="propInfoMap" type="map">
+        <id column="prop_name_id" property="prop_name_id"/>
+        <result column="prop_name" property="prop_name"/>
+        <collection property="propVals" ofType="map" javaType="ArrayList">
+            <id column="prop_val_id" property="prop_val_id"/>
+            <result column="prop_valname" property="prop_valname"/>
+        </collection>
+    </resultMap>
+
+    <resultMap id="prodMap" type="productsinfo">
+        <id column="pid" property="pid"/>
+        <result column="pname" property="pname"/>
+        <result column="title" property="title"/>
+        <result column="desc" property="desc"/>
+        <result column="homeimg" property="homeimg"/>
+        <result column="paramimg" property="paramimg"/>
+        <result column="shopprice" property="shopprice"/>
+        <result column="shopmmdprice" property="shopmmdprice"/>
+        <result column="weight" property="weight"/>
+        <result column="volume" property="volume"/>
+        <result column="isfree" property="isfree"/>
+        <result column="inventory" property="inventory"/>
+        <result column="sell" property="sell"/>
+        <result column="commentcount" property="commentcount"/>
+        <result column="bestcount" property="bestcount"/>
+        <result column="mediumccount" property="mediumccount"/>
+        <result column="badcount" property="badcount"/>
+        <result column="average" property="average"/>
+        <collection property="prodDetailimgList" ofType="ProdDetailimg">
+            <id column="pdid" property="id"/>
+            <result column="img" property="img"/>
+        </collection>
+        <collection property="prodCarousals" ofType="ProdCarousal">
+            <id column="id" property="id"/>
+            <result column="pd_url" property="pdUrl"/>
+        </collection>
+        <collection property="prodServices" ofType="prodService">
+            <id column="sid" property="sid"/>
+            <result column="content" property="content"/>
+        </collection>
+        <collection property="prodSkuList" ofType="prodSku">
+            <id column="sku_id" property="skuId"/>
+            <result column="sku_val" property="skuVal"/>
+            <result column="salenum" property="salenum"/>
+            <result column="repertory" property="repertory"/>
+            <result column="price" property="price"/>
+            <result column="mmdprice" property="mmdprice"/>
+        </collection>
+    </resultMap>
+</mapper>

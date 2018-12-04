@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.mmd.mjapp.dao.UserDao">
+
+    <insert id="regist" parameterType="com.mmd.mjapp.model.User" useGeneratedKeys="true" keyProperty="uId" keyColumn="u_id">
+        INSERT INTO user(u_phone, u_nick, u_integral,  device_id, channel_id, source, u_crtuser, u_crtdate)
+        VALUES (#{uPhone}, #{uNick}, #{uIntegral}, #{deviceId}, #{channelId}, #{source}, '系统', now())
+    </insert>
+
+    <update id="updateUserBaseInfo" parameterType="user">
+        update user set u_qrcode = #{uQrcode}, token = #{token} where u_id = #{uId}
+    </update>
+
+    <update id="relevancyDevice" parameterType="operInfo">
+        update user set device_id = #{deviceid}, channel_id = #{channelid} where u_phone = #{phone}
+    </update>
+
+    <update id="saveHeadImg" parameterType="user">
+        update user set u_headicon = #{uHeadicon} where u_id = #{uId}
+    </update>
+    
+    <update id="saveMMDInfo">
+        update user set u_mmd_no = #{params.mmd_name}, u_mmd_password = #{params.mmd_password} where u_id = #{uid}
+    </update>
+
+    <!--根据token加载用户的所有数据信息-->
+    <select id="getUserWithToken" resultType="com.mmd.mjapp.model.User">
+        select * from user where recsts ='1' and token = #{tokenVal}
+    </select>
+
+    <select id="checkHasCus" resultType="int">
+        select count(*) from user where u_phone = #{phone} and recsts = '1'
+    </select>
+
+    <select id="getUserRegIntegral" resultType="map">
+        select id, value from integral where type = '1' limit 1
+    </select>
+
+    <select id="getPhoneByDb" resultType="user">
+        select u_id, u_integral, u_phone, u_nick, u_mmd_no, u_mmd_money, u_age, u_identity,
+        u_address, u_headicon, u_qrcode, source, device_id, channel_id from user where u_phone = #{phone} and recsts != 'D'
+    </select>
+
+    <select id="updateHeadImg">
+        update user set u_headicon = #{url} where u_id = #{uid}
+    </select>
+
+</mapper>
