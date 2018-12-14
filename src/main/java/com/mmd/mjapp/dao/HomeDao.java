@@ -28,4 +28,8 @@ public interface HomeDao {
     List<Map<String,Object>> getSysMsgList(@Param("type") String type);
 
     List<Map<String, Object>> getMsgDetail(@Param("id") String id);
+
+    List<Map<String,Object>> getProdListBycate(@Param("id") String id);
+
+    List<Map<String,Object>> getProdByMer(@Param("mer_id") String mer_id);
 }

@@ -22,6 +22,7 @@ public class User {
   private String uMmdNo; //关联的MMD账户
   @JsonIgnore
   private String uMmdPassword; //关联的MMD密码
+  @JsonIgnore
   private String uMmdMoney;
   @JsonIgnore
   @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss",timezone="GMT+8")

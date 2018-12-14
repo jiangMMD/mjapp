@@ -25,4 +25,8 @@ public interface HomeService {
     Result getSysMsgList(Page page, String type);
 
     Result getMsgDetail(String id);
+
+    Result getProdListBycate(Page page, String id);
+
+    Result getProdByMer(Page page, String mer_id);
 }

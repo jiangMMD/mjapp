@@ -8,6 +8,41 @@
         update visit_date = now()
     </insert>
 
+    <update id="updateProdEvel">
+        update productsinfo set commentcount = commentcount + 1
+        <!--好评-->
+        <if test="starlevel > 3">
+            ,bestcount = bestcount + 1
+        </if>
+        <if test="starlevel == 3">
+            ,mediumccount = mediumccount + 1
+        </if>
+        <if test="starlevel &lt; 3">
+            ,badcount = badcount + 1
+        </if>
+        where pid = (select pid from bookitem b where b.id = #{bid})
+    </update>
+
+    <update id="updateAvgEvaluate">
+        update productsinfo set
+        average = (select round(avg(starlevel), 1) from prod_evaluate pe where pe.pid = (select pid from bookitem where id = #{bid}))
+        where pid = (select pid from bookitem where id = #{bid})
+    </update>
+
+    <update id="updateProdOldEvel">
+        update productsinfo set commentcount = commentcount - 1
+         <if test="resMap.starlevel > 3">
+             ,bestcount = bestcount - 1
+         </if>
+        <if test="resMap.starlevel == 3">
+            ,mediumccount = mediumccount - 1
+        </if>
+        <if test="resMap.starlevel &lt; 3">
+            ,badcount = badcount - 1
+        </if>
+        where pid = #{resMap.pid}
+    </update>
+
     <select id="queryProdListByStore" resultType="map">
         select pid, pname, shopprice, shopmmdprice,
         homeimg from productsinfo p
@@ -22,7 +57,7 @@
          or m.mer_ename like concat('%', #{key}, '%') or m.mer_name like concat('%', #{key}, '%'))
     </select>
 
-    <select id="queryProdDetail"  resultMap="prodMap">
+    <select id="queryProdDetail" resultMap="prodMap">
         select p.pid, pname, title, `desc`, homeimg, paramimg, shopprice, shopmmdprice,
         weight, volume, isfree, inventory, sell, commentcount, bestcount, mediumccount, badcount, average,
         pc.pd_url, pc.id, ps.content, ps.sid, pd.img, pd.id pdid,
@@ -56,7 +91,8 @@
 
     <select id="getBrowList" resultType="map" resultMap="browDate">
         <foreach collection="dateList" separator="UNION ALL" item="date">
-            (select '${date}' vdate, b.id, b.pid, date_format(b.visit_date, '%Y-%m-%d %T') visit_date, p.pname, p.title, p.homeimg
+            (select '${date}' vdate, b.id, b.pid, date_format(b.visit_date, '%Y-%m-%d %T') visit_date, p.pname, p.title,
+            p.homeimg
             from browhistory b left join productsinfo p on b.pid = p.pid where b.uid = #{uid})
         </foreach>
     </select>
@@ -66,8 +102,53 @@
         select * from sightword
     </select>
 
+    <!--查询产品评价信息-->
+    <select id="getProdEvaluate" resultType="map">
+        select pe.id, (select u_nick from user u where uid = pe.uid) u_nick,
+        (select s.word from sightword s where s.id = pe.sw_id) content,
+        date_format(evdate, '%Y-%m-%d %T') evdate from prod_evaluate pe where pid = #{pid}
+    </select>
+
+    <select id="getSkuState" resultType="map">
+        select sku_id, repertory from prod_sku where sku_id = #{sku_id} and recsts = '1'
+    </select>
+
+
+    <select id="getSkuStateByEntryId" resultType="map">
+        select sku_id, repertory from prod_sku where
+        sku_id = (select sku_id from shopentry where entry_id = #{entry_id}) and recsts = '1'
+    </select>
+
+    <select id="getCollections" resultType="map">
+         select date_format(pc.coll_date, '%Y-%m-%d %T') coll_date, p.prodno, p.pname, p.homeimg, p.mer_id, p.shopprice, p.shopmmdprice,
+         (select mer_name from merchant m where m.mer_id = p.mer_id) mer_name
+         from prod_collect pc left join productsinfo p on pc.pid = p.pid where pc.uid = #{uid}
+    </select>
+
+    <select id="getAppraise" resultType="map">
+        select pe.id, (select u_nick from user u where u.u_id = pe.pid) unick,
+          DATE_FORMAT(pe.evdate, '%Y-%m-%d %T') evdate,
+          (select word from sightword s where s.id = pe.sw_id) comment,
+          (select sku_valname from prod_sku where prod_sku.sku_id = pe.sku_id) propvals,
+          pe.starlevel
+         from prod_evaluate pe where pid = #{pid}
+    </select>
+
+    <select id="getOldEvaluate" resultType="map">
+        select pid, starlevel from prod_evaluate where bid = #{bid}
+    </select>
+
+    <insert id="saveEvaluate" useGeneratedKeys="true" keyProperty="eid" keyColumn="id">
+        insert into prod_evaluate(bid, pid, sku_id,  uid, sw_id, starlevel, evdate)
+        VALUES (#{params.bid}, (select pid from bookitem where id = #{params.bid}),
+         (select sku_id from bookitem where id = #{params.bid}),
+         #{uid}, #{params.id}, #{params.starlevel}, now())
+        on DUPLICATE key
+         update sw_id = #{params.id}, starlevel= #{params.starlevel}
+    </insert>
+
     <resultMap id="browDate" type="map">
-        <id column="vdate" property="vdate" />
+        <id column="vdate" property="vdate"/>
         <collection property="list" ofType="map" javaType="ArrayList">
             <id column="id" property="id"/>
             <result column="pid" property="pid"/>
@@ -79,7 +160,8 @@
     </resultMap>
 
     <delete id="delCollectProd">
-        DELETE FROM prod_collect where id in <foreach collection="ids" item="id" open="(" close=")" separator=",">#{id}</foreach>
+        DELETE FROM prod_collect where id in
+        <foreach collection="ids" item="id" open="(" close=")" separator=",">#{id}</foreach>
     </delete>
 
     <resultMap id="propInfoMap" type="map">

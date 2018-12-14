@@ -42,6 +42,26 @@ public class QrcodeUtils {
         createUserQrCode("", "");
     }
 
+    /**
+     * 生成线下商家二维码
+     * @return
+     * @throws IOException
+     */
+    public static String createMercharQrCode(String mid, String note) throws IOException {
+        //生成用户二维码随机名称
+        String suffix = ".png";
+        String filename = UUID.randomUUID().toString().replaceAll("-", "").substring(0, 8);
+        File file = new File(PropertyLoad.getProperty("MERCHAT.imgDir") + File.separator + filename + suffix);
+        if(!file.getParentFile().exists()) {
+            file.getParentFile().mkdirs();
+            file.createNewFile();
+        }
+        Map<String, Object> map = new HashMap<>();
+        map.put("mid", mid);
+        map.put("type", "merchant");
+        drawLogoQRCode(null, file, JSON.toJSONString(map), note);
+        return PropertyLoad.getProperty("MERCHAT.ngImg") + filename + suffix;
+    }
 
     //生成用户二维码信息
     public static String createUserQrCode(String uid, String note) throws IOException {

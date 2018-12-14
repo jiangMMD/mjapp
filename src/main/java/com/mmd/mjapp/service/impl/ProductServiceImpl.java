@@ -1,6 +1,5 @@
 package com.mmd.mjapp.service.impl;
 
-import com.fasterxml.jackson.annotation.JsonView;
 import com.github.pagehelper.PageHelper;
 import com.mmd.mjapp.config.RedisUtils;
 import com.mmd.mjapp.constant.RedisKey;
@@ -12,8 +11,10 @@ import com.mmd.mjapp.pjo.Result;
 import com.mmd.mjapp.pjo.ResultPage;
 import com.mmd.mjapp.service.ProductService;
 import com.mmd.mjapp.utils.PublicUtil;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
@@ -21,6 +22,8 @@ import java.util.List;
 import java.util.Map;
 
 @Service
+@Transactional
+@Slf4j
 public class ProductServiceImpl implements ProductService {
 
     @Autowired
@@ -115,22 +118,66 @@ public class ProductServiceImpl implements ProductService {
             if(list != null && list.size() > 0) {
                 redisUtils.setTempObj(RedisKey.SIGHTWORD, list);
             }
-            return new Result().success();
+            return new Result().success(list);
         }
-        return new Result().success(object);
+        List<Map<String, Object>> list = (List<Map<String, Object>>) object;
+        return new Result().success(list);
+    }
+
+    /**
+     * 产品评价信息
+     */
+    @Override
+    public Result getProdEvaluate(Page page, String pid) {
+        PageHelper.startPage(page);
+        List<Map<String, Object>> list = productDao.getProdEvaluate(pid);
+        return new Result().success(new ResultPage<>(list));
+    }
+
+    /**
+     * 保存评价
+     * @param params
+     * @return
+     */
+    @Override
+    public Result saveEvaluate(Map<String, Object> params) {
+        User user = getUserInfo();
+        Map<String, Object> resMap = productDao.getOldEvaluate(String.valueOf(params.get("bid")));
+        if(resMap != null) {
+            //更新产品的总评论
+            productDao.updateProdOldEvel(resMap);
+        }
+        //新的评分
+        Integer starlevel = (Integer)params.get("starlevel");
+        //新增评论信息
+        productDao.saveEvaluate(params, user.getuId());
+        productDao.updateProdEvel(starlevel, String.valueOf(params.get("bid")), String.valueOf(params.get("id")));
+        productDao.updateAvgEvaluate(String.valueOf(params.get("bid")));
+        return new Result().success();
+    }
+
+    /**
+     * 查询收藏的产品
+     * @param page
+     */
+    @Override
+    public Result getCollections(Page page) {
+        User user = getUserInfo();
+        PageHelper.startPage(page);
+        List<Map<String, Object>> list = productDao.getCollections(user.getuId());
+        return new Result().success(new ResultPage<>(list));
     }
 
     @Override
-    public Result getProdEvaluate(Page page, String pid) {
-
-        return null;
+    public Result getAppraise(Page page, String pid) {
+        PageHelper.startPage(page);
+        List<Map<String, Object>> list = productDao.getAppraise(pid);
+        return new Result().success(new ResultPage<>(list));
     }
 
     //加载用户信息
     private User getUserInfo() {
         return (User) request.getAttribute("user");
     }
-
-
 
 }

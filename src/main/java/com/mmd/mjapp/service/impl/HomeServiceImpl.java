@@ -150,4 +150,23 @@ public class HomeServiceImpl implements HomeService {
         return new Result().success(homeDao.getMsgDetail(id));
     }
 
+    /**
+     * 根据产品类目查询产品信息
+     */
+    @Override
+    public Result getProdListBycate(Page page, String id) {
+        PageHelper.startPage(page);
+        List<Map<String, Object>> list = homeDao.getProdListBycate(id);
+        return new Result().success(new ResultPage<>(list));
+    }
+
+    @Override
+    public Result getProdByMer(Page page, String mer_id) {
+        PageHelper.startPage(page);
+        List<Map<String, Object>> list = homeDao.getProdByMer(mer_id);
+        return new Result().success(new ResultPage<>(list));
+    }
+
+
+
 }

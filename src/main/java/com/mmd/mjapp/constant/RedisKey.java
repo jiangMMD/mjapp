@@ -12,4 +12,7 @@ public class RedisKey {
     public static final String HOTWORD="hotword";
 
     public static final String SIGHTWORD="sightword";
+
+    //积分设置
+    public static final String BUYINTEGRAL = "buyintegral"; //购物积分
 }

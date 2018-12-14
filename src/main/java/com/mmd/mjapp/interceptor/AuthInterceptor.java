@@ -21,7 +21,8 @@ public class AuthInterceptor extends WebMvcConfigurerAdapter {
         registry.addInterceptor(loginHandlerInterceptor())
                 .addPathPatterns("/user/*") //拦截客户
                 .addPathPatterns("/product/*") //拦截订单
-                .addPathPatterns("/home/*") //拦截订单
+                .addPathPatterns("/home/*")
+                .addPathPatterns("/book/*") //拦截订单
 
                 .excludePathPatterns("/pay/*")
                 .excludePathPatterns("/base/*")

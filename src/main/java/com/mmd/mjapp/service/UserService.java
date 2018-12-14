@@ -19,4 +19,6 @@ public interface UserService {
     Result updateHeadImg(String url);
 
     Result revelanceMMD(Map<String, Object> params);
+
+    Result queryMMDNum();
 }

@@ -49,4 +49,16 @@
         select id, title, content, pic_url picUrl, date_format(crtdate, '%Y-%m-%d %T') msgDate from message where id = #{id}
     </select>
 
+    <select id="getProdListBycate" resultType="map">
+        select pid, mer_id, (select mer_name from merchant where merchant.mer_id = productsinfo.mer_id) mer_name,
+         homeimg, pname, title, shopprice, shopmmdprice
+         from productsinfo where categoryid = #{id} and recsts = '1' and state = 1
+    </select>
+
+    <select id="getProdByMer" resultType="map">
+        select pid, mer_id, (select mer_name from merchant where merchant.mer_id = productsinfo.mer_id) mer_name,
+         homeimg, pname, title, shopprice, shopmmdprice
+         from productsinfo where mer_id = #{mer_id} and recsts = '1' and state = 1
+    </select>
+
 </mapper>

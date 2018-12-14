@@ -23,6 +23,10 @@
         update user set u_mmd_no = #{params.mmd_name}, u_mmd_password = #{params.mmd_password} where u_id = #{uid}
     </update>
 
+    <update id="updateUserInteger">
+        update user set u_integral = #{getInteger} where u_id = #{uid}
+    </update>
+
     <!--根据token加载用户的所有数据信息-->
     <select id="getUserWithToken" resultType="com.mmd.mjapp.model.User">
         select * from user where recsts ='1' and token = #{tokenVal}
@@ -43,6 +47,11 @@
 
     <select id="updateHeadImg">
         update user set u_headicon = #{url} where u_id = #{uid}
+    </select>
+
+    <select id="getDefaultShipAddress" resultType="map">
+        select id, delivery_name, delivery_phone, delivery_address, province, city, districtn, street, zipcode from shipaddress
+        where isdefault = '1' and recsts = '1' and uid = #{uid}
     </select>
 
 </mapper>

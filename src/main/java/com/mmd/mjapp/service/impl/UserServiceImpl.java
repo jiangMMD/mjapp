@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSON;
 import com.mmd.mjapp.config.RedisUtils;
 import com.mmd.mjapp.constant.FileConstant;
 import com.mmd.mjapp.constant.SmsConstant;
+import com.mmd.mjapp.dao.BookDao;
 import com.mmd.mjapp.dao.UserDao;
 import com.mmd.mjapp.model.OperInfo;
 import com.mmd.mjapp.model.User;
@@ -11,6 +12,7 @@ import com.mmd.mjapp.pjo.Result;
 import com.mmd.mjapp.service.UserService;
 import com.mmd.mjapp.utils.*;
 import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.RandomStringUtils;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,10 +29,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 
-
 @Service
 @Transactional
-@Log4j2
+@Slf4j
 public class UserServiceImpl implements UserService {
 
     @Autowired
@@ -38,6 +39,9 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private UserDao userDao;
+
+    @Autowired
+    private BookDao bookDao;
 
     @Autowired
     private HttpServletRequest request;
@@ -73,6 +77,9 @@ public class UserServiceImpl implements UserService {
             //用户注册送积分，
             createUserIntegral(user);
             userDao.regist(user);
+
+            //生成用户购物车
+            bookDao.createShopCat(user.getuId());
             return new Result(1, "注册成功！", updateUserInfo(user));
         } else {
             return res;
@@ -93,14 +100,14 @@ public class UserServiceImpl implements UserService {
     @Override
     public Result login(OperInfo operInfo) throws Exception {
         //如果是测试数据，那么直接登录
-        if((Objects.equals(operInfo.getPhone(), "13788957291") && Objects.equals(operInfo.getYzmCode(), "251230"))
+        if ((Objects.equals(operInfo.getPhone(), "13788957291") && Objects.equals(operInfo.getYzmCode(), "251230"))
                 || (Objects.equals(operInfo.getPhone(), "18015575859") && Objects.equals(operInfo.getYzmCode(), "251230"))) {
             //通过手机号加载用户信息
             User userWithDb = userDao.getPhoneByDb(operInfo.getPhone());
             System.out.println(userWithDb);
-            if(userWithDb == null) {
+            if (userWithDb == null) {
                 return new Result(0, "没有该用户，请先注册");
-            }else if(Objects.equals(userWithDb.getRecsts(), "2")) {
+            } else if (Objects.equals(userWithDb.getRecsts(), "2")) {
                 return new Result(0, "该用户已冻结!");
             }
             return new Result(1, "登录成功！", getUserTokenInfo(userWithDb));
@@ -110,7 +117,7 @@ public class UserServiceImpl implements UserService {
         if (res.getCode() == 1) {
             //校验用户名是否存在
             User userWithDb = userDao.getPhoneByDb(operInfo.getPhone());
-            if(userWithDb == null) {
+            if (userWithDb == null) {
                 return new Result(0, "没有该用户，请先注册");
             }
             //关联用户设备id及其推送id
@@ -122,18 +129,18 @@ public class UserServiceImpl implements UserService {
     }
 
 
-
     /**
      * 开始生成用户积分
      */
     private void createUserIntegral(User user) {
         //获取系统配置的用户注册获取的积分
         Map<String, Object> param = userDao.getUserRegIntegral();
-        if(param != null) {
-            Long integral = (Long) param.get("value");
+        if (param != null) {
+            Long integral = ((Double)param.get("value")).longValue();
             user.setuIntegral(integral);
+        }else{
+            user.setuIntegral(0L);
         }
-        user.setuIntegral(0L);
     }
 
     private Map<String, Object> updateUserInfo(User user) throws Exception {
@@ -182,7 +189,7 @@ public class UserServiceImpl implements UserService {
             return new Result(0, "手机号格式不正确！");
         } else if (StringUtils.isEmpty(operInfo.getYzmCode())) {
             return new Result(0, "验证码不能为空");
-        } else if(isVaild(operInfo.getYzmToken())) {
+        } else if (isVaild(operInfo.getYzmToken())) {
             return new Result(0, "验证码已失效");
         } else if (!checkYzm(operInfo.getYzmToken(), operInfo.getYzmCode())) {
             return new Result(0, "验证码不正确");
@@ -267,12 +274,13 @@ public class UserServiceImpl implements UserService {
 
     /**
      * 关联MMD账户信息
+     *
      * @param params
      * @return
      */
     @Override
     public Result revelanceMMD(@RequestBody Map<String, Object> params) {
-        if(Objects.isNull(params.get("mmd_name")) || Objects.isNull(params.get("mmd_password"))) {
+        if (Objects.isNull(params.get("mmd_name")) || Objects.isNull(params.get("mmd_password"))) {
             return new Result().fail("参数异常，MMD账户和密码不能为空");
         }
         String mmd_name = String.valueOf(params.get("mmd_name"));
@@ -284,7 +292,7 @@ public class UserServiceImpl implements UserService {
         String result = HttpClientUtil.sendPostRequest(reqPar, PropertyLoad.getProperty("MMD.verify"));
         Map<String, Object> res = (Map<String, Object>) JSON.parse(result);
         System.out.println(res);
-        if(Objects.equals(res.get("success"), true)) {
+        if (Objects.equals(res.get("success"), true)) {
             //校验成功，
             //保存账号信息
             User user = getUserInfo();
@@ -295,6 +303,32 @@ public class UserServiceImpl implements UserService {
             return new Result().success();
         }
         return new Result().fail("MMD用户名或密码错误！");
+    }
+
+    /**
+     * 查询MMD账户余额
+     */
+    @Override
+    public Result queryMMDNum() {
+        User user = getUserInfo();
+        if (StringUtils.isEmpty(user.getuMmdNo())) {
+            return new Result().fail("请先绑定MMD账户");
+        } else {
+            Map<String, Object> reqPar = new HashMap<>();
+            reqPar.put("appId", PropertyLoad.getProperty("MMD.appId"));
+            reqPar.put("username", user.getuMmdNo());
+            String result = HttpClientUtil.sendPostRequest(reqPar, PropertyLoad.getProperty("MMD.mmdnum"));
+            Map<String, Object> res = (Map<String, Object>) JSON.parse(result);
+            System.out.println(res);
+            if (Objects.equals(res.get("success"), true)) {
+                //校验成功，
+                user.setuMmdMoney((String) res.get("data"));
+                redisUtils.setUserInfo(user);
+                return new Result().success(res.get("data"));
+            }else{
+                return new Result().fail((String) res.get("message"));
+            }
+        }
     }
 
 

@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.mmd.mjapp.dao.BookDao">
+
+    <insert id="createShopCat">
+        insert into shopcat(uid) VALUES (#{uid})
+    </insert>
+    <insert id="addShopCat">
+        insert into shopentry(pid, sku_id, cat_id, addtime, num)
+        VALUES ((select ps.pid from prod_sku ps where ps.sku_id = #{sku_id}), #{sku_id},
+        (select cat_id from shopcat sc where sc.uid = #{uid}), now(), 1)
+        on DUPLICATE key
+        update addtime = now(), num = num + 1
+    </insert>
+
+    <insert id="insertUseIntegral">
+        insert into integral_log(uid, igvalue, type, opertime)
+        VALUES (#{uid}, #{usableIntegral}, #{type}, now())
+    </insert>
+
+    <!--生成主订单表-->
+    <insert id="createBook" useGeneratedKeys="true" keyColumn="bid" keyProperty="param.bid">
+        insert into book(uid, rmbprice, mmdprice, bookno, totalrmbprice, totalmmdprice)
+        VALUES (#{uid}, #{param.rmbprice}, #{param.mmdprice}, #{bno}, #{param.totalrmbprice}, #{param.totalmmdprice})
+    </insert>
+
+    <insert id="createBookItem">
+        insert into bookitem(bid, pid, sku_id, uid, address_id, goods_rmbprice, goods_mmdprice, goods_num,
+        addtime, upddate)
+        VALUES (#{bid}, #{prodInfo.pid}, #{prodInfo.sku_id}, #{uid}, #{address_id}, #{prodInfo.price}, #{prodInfo.mmdprice}, #{prodInfo.num},
+        now(), now())
+    </insert>
+
+    <update id="updateCatPrice">
+        update shopcat sc set
+        rmbmoney = (select ifnull(sum((select price from prod_sku where sku_id = se.sku_id) * se.num), 0) from shopentry se where se.cat_id = sc.cat_id),
+        mmdmoney = (select ifnull(sum((select mmdprice from prod_sku where sku_id = se.sku_id) * se.num), 0) from shopentry se where se.cat_id = sc.cat_id)
+        where uid = #{uid}
+    </update>
+
+    <delete id="delShopCat">
+        DELETE from shopentry where entry_id in
+        <foreach collection="list" item="id" open="(" close=")" separator=",">#{id}</foreach>
+    </delete>
+
+    <select id="getShopCat" resultType="map" resultMap="shopCatInfo">
+        select
+        c.cat_id, c.mmdmoney, c.rmbmoney,
+        p.mer_id,
+        (select m.mer_name from merchant m where m.mer_id = p.mer_id) mer_name,
+         s.entry_id, s.num, date_format(s.addtime, '%Y-%m-%d %T') addtime,
+         p.pname, p.homeimg, sku.price, sku.mmdprice, sku.sku_valname,
+         (IF(sku.recsts = 'D', '3', IF(repertory = 0, '2', '1'))) prod_state
+         from shopcat c
+         left join shopentry s on c.cat_id = s.cat_id
+         left join productsinfo p on s.pid = p.pid
+         left join prod_sku sku on s.sku_id = sku.sku_id
+         where c.uid = #{uid}
+    </select>
+
+    <select id="getAllFee" resultType="map">
+        select
+         ifnull(sum((select price from prod_sku where sku_id = se.sku_id) * se.num), 0) rmbprice,
+        ifnull(sum((select mmdprice from prod_sku where sku_id = se.sku_id) * se.num), 0) mmdprice
+        from shopentry se where entry_id
+        in <foreach collection="entry_ids" item="entry_id" open="(" close=")" separator=",">#{entry_id}</foreach>
+    </select>
+
+    <select id="getProdInfo" resultType="map" resultMap="merProdMap">
+        select p.mer_id, (select mer_name from merchant m where m.mer_id = p.mer_id) mer_name,
+        p.homeimg, p.pname, se.num, (IF(sku.recsts = 'D', '3', IF(repertory = 0, '2', '1'))) prod_state
+          from productsinfo p left join prod_sku sku on p.pid = sku.pid
+          left join shopentry se on sku.sku_id = se.sku_id
+          where se.entry_id in <foreach collection="entry_ids" open="(" close=")" separator="," item="entry_id">#{entry_id}</foreach>
+    </select>
+
+    <resultMap id="merProdMap" type="map">
+        <id property="mer_id" column="mer_id"/>
+        <result property="mer_name" column="mer_name"/>
+        <collection property="prodList" ofType="map" javaType="arraylist">
+            <result column="homeimg" property="homeimg"/>
+            <result column="pname" property="pname"/>
+            <result column="num" property="num"/>
+            <result column="prod_state" property="prod_state"/>
+        </collection>
+    </resultMap>
+
+
+    <select id="getRates" resultType="string">
+        select rate from rateinfo order by type
+    </select>
+
+    <select id="getBuyIntegral" resultType="map">
+        select backform, `value` from integral where type = '3' and state = 1
+    </select>
+
+    <select id="getBuySkuInfo" resultType="map">
+        select (select mer_id from productsinfo p where p.pid = sku.pid) mer_id, se.sku_id, se.num, sku.pid, sku.mmdprice, sku.price,
+        (IF(sku.recsts = 'D', '3', IF(repertory = 0, '2', '1'))) prod_state
+        from shopentry se left join prod_sku sku on se.sku_id = sku.sku_id where entry_id
+        in <foreach collection="entryIds" item="id" open="(" close=")" separator=",">#{id}</foreach>
+    </select>
+
+    <select id="getSkuStore" resultType="int">
+        select repertory from prod_sku where sku_id = #{sku_id} for update
+    </select>
+
+    <select id="getAllBookList" resultType="map">
+        select bt.id bid, bt.bid packid, bt.pid, bt.sku_id,
+         bt.goods_rmbprice, bt.goods_mmdprice, bt.goods_num, bt.state,
+         p.pname, (select sku_valname from prod_sku where prod_sku.sku_id = bt.sku_id) propVals
+         from bookitem bt left join productsinfo p on bt.pid = p.pid
+         where bt.uid = #{uid}
+         <if test="state != null and state != ''">
+             and bt.state = #{state}
+         </if>
+    </select>
+
+    <select id="getBookDetail" resultType="map">
+        select bt.id bid, bt.bid packid, bt.pid, bt.sku_id,
+         bt.goods_rmbprice, bt.goods_mmdprice, bt.goods_num, bt.state,
+         date_format(bt.addtime, '%Y-%m-%d %T') addtime, date_format(bt.paytime, '%Y-%m-%d %T') paytime,
+         p.pname, (select sku_valname from prod_sku where prod_sku.sku_id = bt.sku_id) propVals,
+          (select bookno from book where book.bid = bt.bid) bookno,
+          (select b.paymentway from book b where b.bid = bt.bid) paymentway
+          from bookitem bt left join productsinfo p on bt.pid = p.pid where bt.id = #{bid}
+    </select>
+
+    <resultMap id="shopCatInfo" type="map">
+        <id column="cat_id" property="cat_id"/>
+        <result column="mmdmoney" property="mmdmoney"/>
+        <result column="rmbmoney" property="rmbmoney"/>
+        <collection property="items" ofType="map" javaType="arraylist">
+            <id property="entry_id" column="entry_id"/>
+            <result property="mer_id" column="mer_id"/>
+            <result property="mer_name" column="mer_name"/>
+            <result property="num" column="num"/>
+            <result property="addtime" column="addtime"/>
+            <result property="pname" column="pname"/>
+            <result property="homeimg" column="homeimg"/>
+            <result property="price" column="price"/>
+            <result property="mmdprice" column="mmdprice"/>
+            <result property="sku_valname" column="sku_valname"/>
+            <result property="prod_state" column="prod_state"/>
+        </collection>
+    </resultMap>
+
+    <update id="updShopCatNum">
+        UPDATE shopentry set num = #{num} where entry_id = #{entry_id}
+    </update>
+
+    <update id="updateSkuStore">
+        update prod_sku set repertory = repertory - #{map.num}, salenum = salenum + #{map.num} where sku_id = #{map.sku_id}
+    </update>
+
+    <update id="reduceStore">
+        update productsinfo set inventory = inventory - #{map.num}, sell = sell + #{map.sell} where pid = (select pid from prod_sku sku where sku.sku_id = #{map.sku_id})
+    </update>
+
+</mapper>

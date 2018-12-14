@@ -21,4 +21,10 @@ public interface ProductService {
     Result getSightWord() throws Exception;
 
     Result getProdEvaluate(Page page, String pid);
+
+    Result saveEvaluate(Map<String, Object> params);
+
+    Result getCollections(Page page);
+
+    Result getAppraise(Page page, String pid);
 }

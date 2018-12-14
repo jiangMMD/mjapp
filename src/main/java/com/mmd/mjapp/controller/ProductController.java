@@ -1,6 +1,7 @@
 package com.mmd.mjapp.controller;
 
 import com.fasterxml.jackson.annotation.JsonView;
+import com.github.pagehelper.StringUtil;
 import com.mmd.mjapp.model.Productsinfo;
 import com.mmd.mjapp.pjo.Page;
 import com.mmd.mjapp.pjo.Result;
@@ -96,6 +97,54 @@ public class ProductController {
     @PostMapping("getProdEvaluate")
     public Result getProdEvaluate(@RequestBody Map<String, Object> params) throws Exception {
         Page page = PublicUtil.mapToEntity(params, Page.class);
+        if(PublicUtil.isEmptyObj(params.get("pid"))) {
+            return new Result().fail("产品ID不能为空!");
+        }
         return productService.getProdEvaluate(page, String.valueOf(params.get("pid")));
     }
+
+    /**
+     * 对该产品进行评价
+     */
+    @PostMapping("saveEvaluate")
+    public Result saveEvaluate(@RequestBody Map<String, Object> params) {
+        if(PublicUtil.isEmptyObj(params.get("bid"))) {
+            return new Result().fail("订单ID不能为空!");
+        }else if(PublicUtil.isEmptyObj(params.get("id"))) {
+            return new Result().fail("评论词ID不能为空!");
+        }else if(params.get("starlevel") == null){
+            return new Result().fail("评分不能为空");
+        }
+        try {
+            Integer starlevel = (Integer) params.get("starlevel");
+            if(starlevel > 5 || starlevel < 1) {
+                return new Result().fail("评分值只能在1-5之间");
+            }
+        } catch (Exception e) {
+            return new Result().fail("请传入int型评分");
+        }
+        return productService.saveEvaluate(params);
+    }
+
+    /**
+     * 查询我的收藏
+     */
+    @PostMapping("/getCollections")
+    public Result getCollections(@RequestBody Map<String, Object> params) throws Exception {
+        Page page = PublicUtil.mapToEntity(params, Page.class);
+        return productService.getCollections(page);
+    }
+
+    /**
+     * 获取产品评价
+     */
+    @PostMapping("/getAppraise")
+    public Result getAppraise(@RequestBody Map<String, Object> params) throws Exception {
+        Page page = PublicUtil.mapToEntity(params, Page.class);
+        if(PublicUtil.isEmptyObj(params.get("pid"))) {
+            return new Result().fail("产品ID不能为空！");
+        }
+        return productService.getAppraise(page, String.valueOf(params.get("pid")));
+    }
+
 }

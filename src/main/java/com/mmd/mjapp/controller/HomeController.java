@@ -1,6 +1,7 @@
 package com.mmd.mjapp.controller;
 
 
+import com.github.pagehelper.PageHelper;
 import com.mmd.mjapp.pjo.Page;
 import com.mmd.mjapp.pjo.Result;
 import com.mmd.mjapp.pjo.ResultPage;
@@ -106,4 +107,31 @@ public class HomeController {
         return homeService.getMsgDetail(String.valueOf(params.get("id")));
     }
 
+    /**
+     * 根据产品分类查询产品信息
+     * @return
+     */
+    @PostMapping("/getProdListBycate")
+    public Result getProdListBycate(@RequestBody Map<String, Object> params) throws Exception {
+        if(PublicUtil.isEmptyObj(params.get("id"))) {
+            return new Result().fail("分类ID不能为空！");
+        }
+        Page page = PublicUtil.mapToEntity(params, Page.class);
+        return homeService.getProdListBycate(page, String.valueOf(params.get("id")));
+    }
+
+    /**
+     * 根据店铺名称查询产品信息
+     * @return
+     */
+    @PostMapping("/getProdByMer")
+    public Result getProdByMer(@RequestBody Map<String, Object> params) throws Exception {
+        if(PublicUtil.isEmptyObj(params.get("mer_id"))) {
+            return new Result().fail("店铺ID不能为空！");
+        }
+        Page page = PublicUtil.mapToEntity(params, Page.class);
+        return homeService.getProdByMer(page, String.valueOf(params.get("mer_id")));
+    }
+
+    
 }

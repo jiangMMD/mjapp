@@ -1,7 +1,6 @@
 package com.mmd.mjapp.dao;
 
 import com.mmd.mjapp.model.Productsinfo;
-import com.mmd.mjapp.pjo.Result;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
@@ -29,4 +28,24 @@ public interface ProductDao {
     List<Map<String, Object>> getBrowList(@Param("dateList") List<String> dateList, @Param("uid") Long uid);
 
     List<Map<String, Object>> getSigthWord();
+
+    List<Map<String,Object>> getProdEvaluate(@Param("pid") String pid);
+
+    void saveEvaluate(@Param("params") Map<String, Object> params, @Param("uid") Long uid);
+
+    void updateProdEvel(@Param("starlevel") Integer starlevel, @Param("bid") String bid, @Param("id") String id);
+
+    Map<String,Object> getSkuState(@Param("sku_id") String sku_id);
+
+    Map<String,Object> getSkuStateByEntryId(@Param("entry_id") String entry_id);
+
+    List<Map<String,Object>> getCollections(@Param("uid") Long uid);
+
+    List<Map<String,Object>> getAppraise(@Param("pid") String pid);
+
+    Map<String,Object> getOldEvaluate(@Param("bid") String bid);
+
+    void updateAvgEvaluate(@Param("bid") String bid);
+
+    void updateProdOldEvel(@Param("resMap") Map<String, Object> resMap);
 }

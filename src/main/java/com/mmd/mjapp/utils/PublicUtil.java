@@ -28,7 +28,7 @@ public class PublicUtil {
 
     public static String getNoID(String user_no) throws Exception {
 
-        return String.valueOf(System.currentTimeMillis()).substring(1, 10) + dupStr(getSeqno(), 5);
+        return String.valueOf(System.currentTimeMillis()).substring(1, 10) + dupStr(getSeqno(), 2);
 
     }
 
@@ -439,4 +439,31 @@ public class PublicUtil {
         return obj == null || "".equals(obj);
     }
 
+    /**
+     * 生成订单编号
+     *
+     * @return
+     */
+    public static String getBookNo() {
+        SimpleDateFormat sfDate = new SimpleDateFormat("yyyyMMddHHmmssSSS");
+        String strDate = sfDate.format(new Date());
+        //为了防止高并发重复,再获取3个随机数
+        String random = getRandom(3);
+        return strDate + random;
+    }
+
+    public static String getRandom(Integer length) {
+        String result = "";
+        Random rand = new Random();
+        int n = 20;
+        if (null != length && length > 0) {
+            n = length;
+        }
+        int randInt = 0;
+        for (int i = 0; i < n; i++) {
+            randInt = rand.nextInt(10);
+            result += randInt;
+        }
+        return result;
+    }
 }

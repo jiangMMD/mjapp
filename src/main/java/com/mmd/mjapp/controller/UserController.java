@@ -144,9 +144,23 @@ public class UserController {
         return extUpp.toUpperCase().matches("^[(JPRG)|JPG)|(PNG)|(GIF)]+$");
     }
 
-
+    /**
+     * 关联MMD
+     * @param params
+     * @return
+     */
     @RequestMapping("/revelanceMMD")
     public Result revelanceMMD(@RequestBody Map<String, Object> params) {
         return userService.revelanceMMD(params);
     }
+
+    /**
+     * 查询MMD余额
+     */
+    @RequestMapping("/queryMMDNum")
+    public Result queryMMDNum() {
+        return userService.queryMMDNum();
+    }
+
+
 }
