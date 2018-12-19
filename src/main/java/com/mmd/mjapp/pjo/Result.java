@@ -46,6 +46,17 @@ public class Result {
         return this;
     }
 
+    /**
+     * 需要前端进行处理的。
+     * @param message
+     * @return
+     */
+    public Result bootbox(String message) {
+        this.code = 2;
+        this.message = message;
+        return this;
+    }
+
     public int getCode() {
         return code;
     }

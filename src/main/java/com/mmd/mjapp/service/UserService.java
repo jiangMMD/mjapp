@@ -1,7 +1,6 @@
 package com.mmd.mjapp.service;
 
 import com.mmd.mjapp.model.OperInfo;
-import com.mmd.mjapp.model.User;
 import com.mmd.mjapp.pjo.Result;
 
 import java.util.Map;
@@ -21,4 +20,14 @@ public interface UserService {
     Result revelanceMMD(Map<String, Object> params);
 
     Result queryMMDNum();
+
+    Result addShipAddress(Map<String, Object> param);
+
+    Result setDefaultAddress(String id);
+
+    Result queryShipAddress();
+
+    Result delShipAddress(String ids);
+
+    Result sendPayCode(OperInfo operInfo) throws Exception;
 }

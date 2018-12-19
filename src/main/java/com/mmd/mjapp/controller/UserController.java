@@ -74,6 +74,14 @@ public class UserController {
     }
 
     /**
+     * 发送验证码， 注册时
+     */
+    @PostMapping("/sendPayCode")
+    public Result sendPayCode(@RequestBody OperInfo operInfo) throws Exception {
+        return userService.sendPayCode(operInfo);
+    }
+
+    /**
      * 客户登录
      */
     @PostMapping("/login")
@@ -84,7 +92,6 @@ public class UserController {
 
     /**
      * 校验身份证号码是否正确
-     *
      * @param identity
      * @return
      */
@@ -162,5 +169,50 @@ public class UserController {
         return userService.queryMMDNum();
     }
 
+
+    /**
+     * 添加或修改收货地址
+     */
+    @RequestMapping("/addOrUpdShipAddress")
+    public Result addShipAddress(@RequestBody Map<String, Object> param) {
+        if(PublicUtil.isEmptyObj(param.get("phone"))) {
+            return new Result().fail("收货人手机号不能为空！");
+        }else if(PublicUtil.isEmptyObj(param.get("name"))) {
+            return new Result().fail("收货人不能为空！");
+        }else if(PublicUtil.isEmptyObj(param.get("address"))) {
+            return new Result().fail("收货地址不能为空！");
+        }
+        return userService.addShipAddress(param);
+    }
+
+    /**
+     * 设置默认收货地址
+     */
+    @RequestMapping("/setDefaultAddress")
+    public Result setDefaultAddress(@RequestBody Map<String, Object> params) {
+        if(PublicUtil.isEmptyObj(params.get("id"))) {
+            return new Result().fail("收货地址ID不能为空！");
+        }
+        return userService.setDefaultAddress(String.valueOf(params.get("id")));
+    }
+
+    /**
+     * 查询收货地址
+     */
+    @RequestMapping("/queryShipAddress")
+    public Result queryShipAddress() {
+        return userService.queryShipAddress();
+    }
+
+    /**
+     * 删除收货地址
+     */
+    @RequestMapping("/delShipAddress")
+    public Result delShipAddress(@RequestBody Map<String, Object> params) {
+        if(PublicUtil.isEmptyObj(params.get("ids"))) {
+            return new Result().fail("收货地址ID不能为空");
+        }
+        return userService.delShipAddress(String.valueOf(params.get("ids")));
+    }
 
 }

@@ -120,6 +120,7 @@ public class HomeController {
         return homeService.getProdListBycate(page, String.valueOf(params.get("id")));
     }
 
+
     /**
      * 根据店铺名称查询产品信息
      * @return
@@ -133,5 +134,4 @@ public class HomeController {
         return homeService.getProdByMer(page, String.valueOf(params.get("mer_id")));
     }
 
-    
 }

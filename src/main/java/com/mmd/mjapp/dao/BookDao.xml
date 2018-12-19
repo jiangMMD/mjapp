@@ -19,16 +19,25 @@
     </insert>
 
     <!--生成主订单表-->
-    <insert id="createBook" useGeneratedKeys="true" keyColumn="bid" keyProperty="param.bid">
-        insert into book(uid, rmbprice, mmdprice, bookno, totalrmbprice, totalmmdprice)
-        VALUES (#{uid}, #{param.rmbprice}, #{param.mmdprice}, #{bno}, #{param.totalrmbprice}, #{param.totalmmdprice})
+    <insert id="createBook" useGeneratedKeys="true" keyColumn="bookid" keyProperty="param.bookid">
+        insert into book(uid, rmbprice, mmdprice, totalrmbprice, totalmmdprice, integral)
+        VALUES (#{uid}, #{param.rmbprice}, #{param.mmdprice}, #{param.totalrmbprice}, #{param.totalmmdprice}, #{param.getInteger})
     </insert>
 
-    <insert id="createBookItem">
-        insert into bookitem(bid, pid, sku_id, uid, address_id, goods_rmbprice, goods_mmdprice, goods_num,
-        addtime, upddate)
-        VALUES (#{bid}, #{prodInfo.pid}, #{prodInfo.sku_id}, #{uid}, #{address_id}, #{prodInfo.price}, #{prodInfo.mmdprice}, #{prodInfo.num},
-        now(), now())
+    <insert id="createBookItem" useGeneratedKeys="true" keyProperty="book.bid" keyColumn="bid">
+        insert into bookitem(bookid, mer_id, uid, book_no, address_id, goods_rmbprice, goods_mmdprice,
+        topayrmbprice, topaymmdprice addtime, leaveword)
+        VALUES (#{bookid}, #{book.mer_id}, #{uid}, #{book.bookno}, #{address_id}, #{book.totalrmbprice}, #{book.totalmmdprice},
+        #{book.totalrmbprice}, #{book.totalmmdprice},
+        now(), #{book.word})
+    </insert>
+
+    <insert id="createProdInfo">
+        insert into bookprod(bid, pid, sku_id, num, rmbprice, mmdprice)
+        VALUES
+        <foreach collection="prodList" item="prod" separator=",">
+            (#{bid}, #{prod.pid}, #{prod.sku_id}, #{prod.num}, #{prod.price}, #{prod.mmdprice})
+        </foreach>
     </insert>
 
     <update id="updateCatPrice">
@@ -67,10 +76,10 @@
     </select>
 
     <select id="getProdInfo" resultType="map" resultMap="merProdMap">
-        select p.mer_id, (select mer_name from merchant m where m.mer_id = p.mer_id) mer_name,
+        select p.mer_id, (select mer_name from merchant m where m.mer_id = p.mer_id) mer_name, sku.sku_id,
         p.homeimg, p.pname, se.num, (IF(sku.recsts = 'D', '3', IF(repertory = 0, '2', '1'))) prod_state
-          from productsinfo p left join prod_sku sku on p.pid = sku.pid
-          left join shopentry se on sku.sku_id = se.sku_id
+          from shopentry se left join productsinfo p on se.pid = p.pid
+          left join prod_sku sku on se.sku_id = sku.sku_id
           where se.entry_id in <foreach collection="entry_ids" open="(" close=")" separator="," item="entry_id">#{entry_id}</foreach>
     </select>
 
@@ -78,6 +87,7 @@
         <id property="mer_id" column="mer_id"/>
         <result property="mer_name" column="mer_name"/>
         <collection property="prodList" ofType="map" javaType="arraylist">
+            <id column="sku_id" property="sku_id"/>
             <result column="homeimg" property="homeimg"/>
             <result column="pname" property="pname"/>
             <result column="num" property="num"/>
@@ -105,25 +115,58 @@
         select repertory from prod_sku where sku_id = #{sku_id} for update
     </select>
 
-    <select id="getAllBookList" resultType="map">
-        select bt.id bid, bt.bid packid, bt.pid, bt.sku_id,
-         bt.goods_rmbprice, bt.goods_mmdprice, bt.goods_num, bt.state,
-         p.pname, (select sku_valname from prod_sku where prod_sku.sku_id = bt.sku_id) propVals
-         from bookitem bt left join productsinfo p on bt.pid = p.pid
+    <select id="getAllBookList" resultType="map" resultMap="bookMap">
+        select bt.bid, bt.bookid packid, bt.isevaluate,
+        bt.book_no, bt.state,bt.mer_id,
+        (select mer_name from merchant m where m.mer_id = bt.mer_id) mer_name,
+        bp.rmbprice,bp.mmdprice, bp.num, bp.sku_id,
+        (select sku_valname from prod_sku where prod_sku.sku_id = bp.sku_id) sku_valname,
+        p.pname, p.homeimg
+         from bookitem bt left join bookprod bp on bt.bid = bp.bid
+         left join productsinfo p on bp.pid = p.pid
          where bt.uid = #{uid}
          <if test="state != null and state != ''">
              and bt.state = #{state}
          </if>
     </select>
 
+    <resultMap id="bookMap" type="map">
+        <id property="bid" column="bid"/>
+        <result property="packid" column="packid"/>
+        <result property="isevaluate" column="isevaluate"/>
+        <result property="book_no" column="book_no"/>
+        <result property="state" column="state"/>
+        <result property="mer_id" column="mer_id"/>
+        <result property="mer_name" column="mer_name"/>
+        <collection property="prodList" ofType="map" javaType="arraylist">
+            <id property="sku_id" column="sku_id"/>
+            <result property="pname" column="pname"/>
+            <result property="homeimg" column="homeimg"/>
+            <result property="rmbprice" column="rmbprice"/>
+            <result property="mmdprice" column="mmdprice"/>
+            <result property="num" column="num"/>
+            <result property="sku_valname" column="sku_valname"/>
+        </collection>
+    </resultMap>
+
     <select id="getBookDetail" resultType="map">
         select bt.id bid, bt.bid packid, bt.pid, bt.sku_id,
          bt.goods_rmbprice, bt.goods_mmdprice, bt.goods_num, bt.state,
          date_format(bt.addtime, '%Y-%m-%d %T') addtime, date_format(bt.paytime, '%Y-%m-%d %T') paytime,
          p.pname, (select sku_valname from prod_sku where prod_sku.sku_id = bt.sku_id) propVals,
-          (select bookno from book where book.bid = bt.bid) bookno,
           (select b.paymentway from book b where b.bid = bt.bid) paymentway
           from bookitem bt left join productsinfo p on bt.pid = p.pid where bt.id = #{bid}
+    </select>
+
+    <select id="getBookItemsByPickId" resultType="map">
+        select rmbprice, mmdprice from book b where bookid = #{bid}
+    </select>
+
+    <select id="getBookItemsByBids" resultType="map">
+        select topaymmdprice, topayrmbprice from bookitem where bid in
+        <foreach collection="bookItems" item="bid" separator="," open="(" close=")">
+            #{bid}
+        </foreach>
     </select>
 
     <resultMap id="shopCatInfo" type="map">
@@ -155,6 +198,18 @@
 
     <update id="reduceStore">
         update productsinfo set inventory = inventory - #{map.num}, sell = sell + #{map.sell} where pid = (select pid from prod_sku sku where sku.sku_id = #{map.sku_id})
+    </update>
+    
+    <update id="updateBookToPayMMDSuccess">
+        update bookitem set payprice = topaymmdprice, paytime = now(),
+        ispay = 1, paymenttype = 2, paymentway = #{payWay}, state = 2
+        where bookid = #{bid} and recsts = '1'
+    </update>
+
+    <update id="updateBookToPayMMDSuccessByBids">
+        update bookitem set payprice = topaymmdprice, paytime = now(),
+        ispay = 1, paymenttype = 2, paymentway = #{payWay}, state = 2
+        where bid in <foreach collection="bookItems" item="bid" separator="," open="(" close=")">#{bid}</foreach>
     </update>
 
 </mapper>

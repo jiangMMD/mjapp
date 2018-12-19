@@ -11,7 +11,6 @@ import com.mmd.mjapp.model.User;
 import com.mmd.mjapp.pjo.Result;
 import com.mmd.mjapp.service.UserService;
 import com.mmd.mjapp.utils.*;
-import lombok.extern.log4j.Log4j2;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.RandomStringUtils;
 import org.apache.commons.lang.StringUtils;
@@ -215,8 +214,6 @@ public class UserServiceImpl implements UserService {
     }
 
     private Result sendYzm(String phone, String token, String template) throws Exception {
-        System.out.println(token);
-        System.out.println(phone);
         if (StringUtils.isEmpty(phone)) {
             return new Result(0, "手机号不能为空!");
         } else if (!checkPhone(phone)) {
@@ -331,5 +328,70 @@ public class UserServiceImpl implements UserService {
         }
     }
 
+    @Override
+    public Result addShipAddress(Map<String, Object> param) {
+        //如果没有默认， 那么就设置默认
+        User user = getUserInfo();
+        if(PublicUtil.isEmptyObj(param.get("id"))) {
+            userDao.addShipAddress(param, user.getuId());
+        }else{
+            userDao.updateShipAddress(param);
+        }
+        return new Result().success();
+    }
 
+    @Override
+    public Result setDefaultAddress(String id) {
+        userDao.setNoDefaulAddress(id);
+        userDao.setDefaultAddress(id);
+        return new Result().success();
+    }
+
+    /**
+     * 查询该用户的收货地址
+     */
+    @Override
+    public Result queryShipAddress() {
+        User user = getUserInfo();
+        return new Result().success(userDao.queryShipAddress(user.getuId()));
+    }
+
+    @Override
+    public Result delShipAddress(String ids) {
+        userDao.delShipAddress(PublicUtil.toListByIds(ids));
+        return new Result().success();
+    }
+
+    @Override
+    public Result sendPayCode(OperInfo operInfo) throws Exception {
+        log.info(operInfo.toString());
+        String phone = getUserInfo().getuPhone();
+        String token = operInfo.getToken();
+        return sendTestYzm(phone, token, SmsConstant.TEMPLATE_LOGIN);
+    }
+
+    private Result sendTestYzm(String phone, String token, String template) throws Exception {
+        if (StringUtils.isEmpty(phone)) {
+            return new Result(0, "手机号不能为空!");
+        } else if (!checkPhone(phone)) {
+            return new Result(0, "手机号格式不正确!");
+        }
+        String aes;
+        try {
+            aes = AESUtils.decryptWithHex(token.substring(6, token.length() - 6), FileConstant.AESKey);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new Result(0, "参数异常!");
+        }
+        String sendNum = redisUtils.get(aes);
+        if (StringUtils.isEmpty(sendNum)) {
+            redisUtils.set(aes, "1", 30 * 60);
+        } else {
+            return new Result().fail("该Token已失效!");
+        }
+        String trefreshToken = TokenUtil.createRefrestToken();
+        //验证码30分钟内有效
+        redisUtils.set(trefreshToken, "000000", 60 * 30);
+        return new Result(1, "短信发送成功！", trefreshToken);
+    }
 }

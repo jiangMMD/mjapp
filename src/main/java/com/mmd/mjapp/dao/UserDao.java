@@ -3,9 +3,9 @@ package com.mmd.mjapp.dao;
 
 import com.mmd.mjapp.model.OperInfo;
 import com.mmd.mjapp.model.User;
-import com.sun.corba.se.spi.ior.ObjectKey;
 import org.apache.ibatis.annotations.Param;
 
+import java.util.List;
 import java.util.Map;
 
 public interface UserDao {
@@ -33,4 +33,16 @@ public interface UserDao {
     void updateUserInteger(@Param("uid") Long uid, @Param("getInteger") Integer getInteger);
 
     Map<String, Object> getDefaultShipAddress(@Param("uid") Long uid);
+
+    void addShipAddress(@Param("param") Map<String, Object> param, @Param("uid") Long uid);
+
+    void updateShipAddress(@Param("param") Map<String, Object> param);
+
+    void setDefaultAddress(@Param("id") String id);
+
+    void setNoDefaulAddress(@Param("id") String id);
+
+    List<Map<String, Object>> queryShipAddress(@Param("uid") Long uid);
+
+    void delShipAddress(@Param("ids") List<String> ids);
 }

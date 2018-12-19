@@ -20,9 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import javax.servlet.http.HttpServletRequest;
 import java.math.BigDecimal;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 @Slf4j
@@ -97,8 +95,7 @@ public class BookServiceImpl implements BookService {
     }
 
     /**
-     * 购物车条目
-     *
+     * 购物车结算
      * @param entry_ids
      */
     @Override
@@ -108,6 +105,7 @@ public class BookServiceImpl implements BookService {
         List<String> entryIds = PublicUtil.toListByIds(entry_ids);
         //查询产品订单信息
         List<Map<String, Object>> merItems = bookDao.getProdInfo(entryIds);
+        System.out.println(merItems);
         //检查选择的产品是否有失效或者库存不足的产品
         for (Map<String, Object> map : merItems) {
             List<Map<String, Object>> prodList = (List<Map<String, Object>>) map.get("prodList");
@@ -119,20 +117,30 @@ public class BookServiceImpl implements BookService {
                 }
             }
         }
+
+        User user = getUserInfo();
+        dealBookIntegral(resMap, entry_ids, user, merItems);
+        //查询默认收货地址
+        Map<String, Object> shipAddress = userDao.getDefaultShipAddress(user.getuId());
+        resMap.put("shipaddress", shipAddress == null ? "" : shipAddress);
+        return new Result().success(resMap);
+    }
+
+    private void dealBookIntegral(Map<String, Object> resMap, String entry_ids, User user, List<Map<String, Object>> merItems) {
         resMap.put("entry_ids", entry_ids);
         resMap.put("merItems", merItems);
         //查询本次订单的总费用
-        Map<String, Object> fee = bookDao.getAllFee(entryIds);
+        Map<String, Object> fee = bookDao.getAllFee(PublicUtil.toListByIds(entry_ids));
         resMap.put("fee", fee); //产品总费用
 
         //用户当前可用总积分
-        User user = getUserInfo();
         resMap.put("totalIntegral", user.getuIntegral()); //用户总积分
         //如果使用积分那么对应金额。
         List<String> rateInfos = bookDao.getRates();
         if (rateInfos == null || rateInfos.size() < 2) {
             log.error("RMB和积分比例表数据出现错误！");
-            return new Result().fail("服务器内部数据异常！");
+//            return new Result().fail("服务器内部数据异常！");
+            throw new ResultException("服务器内部数据异常！");
         }
         //RMB/MMD比例
         resMap.put("mmdToRmbRate", rateInfos.get(0));
@@ -159,10 +167,6 @@ public class BookServiceImpl implements BookService {
                         .setScale(0, BigDecimal.ROUND_HALF_DOWN))
                 .setScale(2, BigDecimal.ROUND_HALF_DOWN);
         resMap.put("mmdpriceUseIg", mmdpriceUseIg);
-
-        //查询默认收货地址
-        resMap.put("shipaddress", userDao.getDefaultShipAddress(user.getuId()));
-        return new Result().success(resMap);
     }
 
     /**
@@ -173,33 +177,83 @@ public class BookServiceImpl implements BookService {
     @Override
     public Result confirmBook(Map<String, Object> params) throws Exception {
         User user = getUserInfo();
+        //校验用户是否绑定了MMD, 第一版本必须绑定MMD; 测试账户不做绑定
+        if(user.getuMmdNo() == null && Objects.equals("13788957291", user.getuPhone())) {
+            return new Result().fail("请先绑定MMD账户！");
+        }
         String entry_ids = String.valueOf(params.get("entry_ids"));
         List<String> entryIds = PublicUtil.toListByIds(entry_ids);
         //执行减库存操作。
         dealProdRepertory(entryIds, params);
-
-        //处理用户积分信息
+        //处理用户积分信息,
         dealUserIntegral(user, params, entryIds);
-        //生成订单编号
-        String bno = PublicUtil.getBookNo();
-        //生成订单信息。
-        bookDao.createBook(user.getuId(), bno, params); //创建主订单表
+
+        //生成主订单信息。
+        bookDao.createBook(user.getuId(), params); //创建主订单表
+
         //生成订单项详细
-        List<Map<String, Object>> prodInfos = (List<Map<String, Object>>) params.get("buySkuInfo");
-        for (Map<String, Object> prodInfo : prodInfos) {
+        Map<String, Object> bookInfos = (Map<String, Object>) params.get("bookInfo");
+        System.out.println(bookInfos);
+        for (Map.Entry<String, Object> entry : bookInfos.entrySet()) {
+            //生成订单编号
+            List<Map<String, Object>> prodInfo = (List<Map<String, Object>>) entry.getValue();
+            //创建订单; 一个商家一个订单。
+            Map<String, Object> book = createBook(prodInfo, params);
+            //创建订单ITEM信息，
+            bookDao.createBookItem(book, user.getuId(), String.valueOf(params.get("address_id")), String.valueOf(params.get("bookid")));
             //添加产品项信息
-            bookDao.createBookItem(prodInfo, user.getuId(), String.valueOf(params.get("address_id")), String.valueOf(params.get("bid")));
+            bookDao.createProdInfo(String.valueOf(book.get("bid")), prodInfo);
         }
         //删除购物车中的产品
         bookDao.delShopCat(entryIds);
         //更新购物车中的总价
         bookDao.updateCatPrice(user.getuId());
+
+        //返回本次应支付的总金额
         Map<String, Object> res = new HashMap<>();
-        res.put("bid", params.get("bid"));
+        res.put("bid", params.get("bookid"));
         res.put("rmbprice", params.get("rmbprice"));
         res.put("mmdprice", params.get("mmdprice"));
         redisUtils.setUserInfo(user); //当数据库没有错误的时候，那么更新用户信息到redis中。
         return new Result().success(res);
+    }
+
+    /**
+     * 创建订单
+     */
+    private Map<String, Object> createBook(List<Map<String, Object>> prodInfo, Map<String, Object> params) {
+        Map<String, Object> res = new HashMap<>();
+        Double totalrmbprice = 0D;
+        Double totalmmdprice = 0D;
+        for (Map<String, Object> map : prodInfo) {
+            totalrmbprice = totalrmbprice +
+                    Double.valueOf(String.valueOf(map.get("price")))
+                            * Double.valueOf(String.valueOf(map.get("num")));
+            totalmmdprice = totalmmdprice +
+                    Double.valueOf(String.valueOf(map.get("mmdprice")))
+                            * Double.valueOf(String.valueOf(map.get("num")));
+        }
+        res.put("totalrmbprice", totalrmbprice);
+        res.put("totalmmdprice", totalmmdprice);
+        res.put("bookno", PublicUtil.getBookNo());
+        //获取卖家ID
+        String mer_id = String.valueOf(prodInfo.get(0).get("mer_id"));
+        res.put("mer_id", mer_id);
+        //处理卖家留言信息
+        if(!PublicUtil.isEmptyObj(params.get("leaveword"))) {
+            try {
+                List<Map<String, Object>> mapList = (List<Map<String, Object>>) params.get("leaveword");
+                for (Map<String, Object> map : mapList) {
+                    if(Objects.equals(mer_id, String.valueOf(map.get("mer_id")))){
+                        res.put("word", map.get("word"));
+                    }
+                }
+            } catch (Exception e) {
+                log.error(e.getMessage());
+                throw new ResultException("参数LeaveWord格式不正确!");
+            }
+        }
+        return res;
     }
 
 
@@ -208,18 +262,30 @@ public class BookServiceImpl implements BookService {
      */
     private void dealProdRepertory(List<String> entryIds, Map<String, Object> params) {
         List<Map<String, Object>> buySkuInfo = bookDao.getBuySkuInfo(entryIds);
-        if(buySkuInfo == null || buySkuInfo.size() < entryIds.size()) {
+        if (buySkuInfo == null || buySkuInfo.size() < entryIds.size()) {
             throw new ResultException("订单中有无效的商品！");
         }
         //判断购买的产品是否具有失效的产品
-        for(Map<String, Object> map : buySkuInfo) {
-            if("2".equals(map.get("prod_state"))) {
+        for (Map<String, Object> map : buySkuInfo) {
+            if ("2".equals(map.get("prod_state"))) {
                 throw new ResultException("产品库存不足!");
-            }else if("3".equals(map.get("prod_state"))) {
+            } else if ("3".equals(map.get("prod_state"))) {
                 throw new ResultException("产品已失效!");
             }
         }
-        params.put("buySkuInfo", buySkuInfo);
+        Map<String, Object> bookInfo = new HashMap<>();
+        List<Map<String, Object>> merInfo = null;
+        for (Map<String, Object> skuInfo : buySkuInfo) {
+            if (bookInfo.get(String.valueOf(skuInfo.get("mer_id"))) != null) {
+                merInfo = (List<Map<String, Object>>) bookInfo.get(String.valueOf(skuInfo.get("mer_id")));
+                merInfo.add(skuInfo);
+            } else {
+                merInfo = new ArrayList<>();
+                merInfo.add(skuInfo);
+            }
+            bookInfo.put(String.valueOf(skuInfo.get("mer_id")), merInfo);
+        }
+        params.put("bookInfo", bookInfo);
         //判断购买产品是否出现库存不足情况
         for (Map<String, Object> map : buySkuInfo) {
             //使用mysql for update 查询锁限制重复购买情况。 后期增加购买量之后，需要更换掉。
@@ -264,10 +330,14 @@ public class BookServiceImpl implements BookService {
             //按百分比
             getInteger = ((Double) (value * rmbprice / 100)).intValue();
         }
-        if (getInteger != 0) {
-            //那么记录本次积分获得情况
-            bookDao.insertUseIntegral(user.getuId(), getInteger, 2);
-        }
+        //这是本次用户可获得的积分
+        params.put("getInteger", getInteger);
+
+//        if (getInteger != 0) {
+//            //那么记录本次积分获得情况
+//            bookDao.insertUseIntegral(user.getuId(), getInteger, 2);
+//        }
+
         //是否使用积分。
         if (params.get("useIntegral") != null && "1".equals(String.valueOf(params.get("useIntegral")))) {
             //使用积分,
@@ -281,9 +351,12 @@ public class BookServiceImpl implements BookService {
             //使用完的剩余积分
             Integer rmIntegral = remainIntegral.intValue();//用户使用积分之后，剩余的积分。
             Long usableIntegral = user.getuIntegral() - rmIntegral;//可用积分
+            //更新用户的最终剩余积分
+            //本次用户获得的积分，需要在支付之后才能获取
+            userDao.updateUserInteger(user.getuId(), usableIntegral.intValue());
+
             //记录本次积分消耗情况
             bookDao.insertUseIntegral(user.getuId(), usableIntegral.intValue(), 1);
-            getInteger = getInteger - usableIntegral.intValue();
 
             //剩余积分
             //兑换的积分对应着RMB价格
@@ -297,22 +370,81 @@ public class BookServiceImpl implements BookService {
                     .setScale(2, BigDecimal.ROUND_HALF_DOWN);
             params.put("mmdprice", mmdpriceUseIg);
         }
-        getInteger = getInteger + user.getuIntegral().intValue();
-        //更新用户的最终剩余积分
-        userDao.updateUserInteger(user.getuId(), getInteger);
-        user.setuIntegral(getInteger.longValue());
     }
 
 
     /**
      * 查询全部订单
+     * 订单信息
+     * * 按钮信息：  1：取消订单 2：付款 3：查物流  4：提醒发货 5：查看物流 6：确认收货 7：删除订单 8：评价
+     * 1:待付款时--按钮 （1,2）
+     * 2:待发货 -- （4）
+     * 3:待收货-- （5，6）
+     * 4:待评价-- （5，7，（8--尚未评价才有））
      * @param state
      */
     @Override
     public Result getAllBookList(String state) {
         User user = getUserInfo();
-        List<Map<String, Object>> list = bookDao.getAllBookList(user.getuId(), state);
+        List<Map<String, Object>> list;
+        list = bookDao.getAllBookList(user.getuId(), state);
+        //设置订单按钮状态
+        for (Map<String, Object> map : list) {
+            String bookState = String.valueOf(map.get("state"));
+            if ("1".equals(bookState)) { //待付款
+                map.put("btnInfo", createBtn(new String[]{"1", "2"}));
+            } else if ("2".equals(bookState)) { //待发货
+                map.put("btnInfo", createBtn(new String[]{"4"}));
+            } else if ("3".equals(bookState)) {
+                map.put("btnInfo", createBtn(new String[]{"5", "6"}));
+            } else if ("4".equals(bookState)) {
+                if ("1".equals(map.get("isevaluate"))) {
+                    //如果已经评价，那么就不在让继续评价
+                    map.put("btnInfo", createBtn(new String[]{"5", "7", "8"}));
+                } else {
+                    map.put("btnInfo", createBtn(new String[]{"5", "7"}));
+                }
+            }
+        }
         return new Result().success(new ResultPage<>(list));
+    }
+
+    private List<Map<String, Object>> createBtn(String[] ids) {
+        List<Map<String, Object>> list = new ArrayList<>();
+        for (String id : ids) {
+            Map<String, Object> map = new HashMap<>();
+            String btnName = "";
+            switch (id) {
+                case "1":
+                    btnName = "取消订单";
+                    break;
+                case "2":
+                    btnName = "付款";
+                    break;
+                case "3":
+                    btnName = "查物流";
+                    break;
+                case "4":
+                    btnName = "提醒发货";
+                    break;
+                case "5":
+                    btnName = "查看物流";
+                    break;
+                case "6":
+                    btnName = "确认收货";
+                    break;
+                case "7":
+                    btnName = "删除订单";
+                    break;
+                case "8":
+                    btnName = "评价";
+                    break;
+            }
+            map.put("operId", id);
+            map.put("operName", btnName);
+            list.add(map);
+        }
+        return list;
     }
 
     @Override

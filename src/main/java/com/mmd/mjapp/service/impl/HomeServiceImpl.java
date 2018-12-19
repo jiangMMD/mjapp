@@ -44,7 +44,7 @@ public class HomeServiceImpl implements HomeService {
         if (classifys == null) {
             //那么从数据库加载数据
             List<Map<String, Object>> list = homeDao.getCliassify();
-            redisUtils.set(RedisKey.CLASSIFY, list);
+            redisUtils.setTempObj(RedisKey.CLASSIFY, list);
             return list;
         } else {
             return (List<Map<String, Object>>) classifys;
@@ -58,7 +58,7 @@ public class HomeServiceImpl implements HomeService {
         if (carousel == null) {
             //从数据库中加载数据
             List<Map<String, Object>> list = homeDao.getCarousel();
-            redisUtils.set(RedisKey.CAROUSAL, list);
+            redisUtils.setTempObj(RedisKey.CAROUSAL, list);
             return list;
         }
         return (List<Map<String, Object>>) carousel;
@@ -75,7 +75,7 @@ public class HomeServiceImpl implements HomeService {
 //        if (brand == null) {
             PageHelper.startPage(page);
             List<Merchant> list = homeDao.getBrand();
-            redisUtils.set(RedisKey.BRAND, list);
+//            redisUtils.setTempObj(RedisKey.BRAND, list);
             return new Result().success(new ResultPage<>(list));
 //        }
     }
@@ -86,10 +86,11 @@ public class HomeServiceImpl implements HomeService {
         if(hotWordList == null) {
             //从数据库中加载
             List<Map<String, Object>> list = homeDao.getHotWord();
-            redisUtils.set(RedisKey.HOTWORD, list);
+            redisUtils.setTempObj(RedisKey.HOTWORD, list);
             return new Result().success(list);
         }
-        return new Result().success(hotWordList);
+        List<Map<String, Object>> hots = (List<Map<String, Object>>) hotWordList;
+        return new Result().success(hots);
     }
 
     @Override

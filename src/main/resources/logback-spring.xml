@@ -54,7 +54,7 @@
             <Prudent>true</Prudent>
             <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
                 <fileNamePattern>
-                    applog/xxzapp/%d{yyyy-MM-dd}.log
+                    applog/mjapp/%d{yyyy-MM-dd}.log
                 </fileNamePattern>
                 <MaxHistory>30</MaxHistory>
             </rollingPolicy>

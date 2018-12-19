@@ -1,6 +1,5 @@
 package com.mmd.mjapp.dao;
 
-import com.mmd.mjapp.pjo.Result;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
@@ -38,11 +37,21 @@ public interface BookDao {
 
     void reduceStore(@Param("map") Map<String, Object> map);
 
-    void createBook(@Param("uid") Long uid, @Param("bno") String bno, @Param("param") Map<String, Object> param);
+    void createBook(@Param("uid") Long uid, @Param("param") Map<String, Object> param);
 
-    void createBookItem(@Param("prodInfo") Map<String, Object> prodInfo, @Param("uid") Long uid, @Param("address_id") String address_id, @Param("bid") String bid);
+    void createBookItem(@Param("book") Map<String, Object> book, @Param("uid") Long uid, @Param("address_id") String address_id, @Param("bookid") String bookid);
 
     List<Map<String,Object>> getAllBookList(@Param("uid") Long uid, @Param("state") String state);
 
     Map<String, Object> getBookDetail(@Param("bid") String bid);
+
+    void createProdInfo(@Param("bid") String bid, @Param("prodList") List<Map<String, Object>> prodList);
+
+    Map<String, Object> getBookItemsByPickId(@Param("bid") String bid);
+
+    List<Map<String,Object>> getBookItemsByBids(@Param("bookItems") List<String> bookItems);
+
+    void updateBookToPayMMDSuccess(@Param("bid") String bid, @Param("payprice") Double payprice, @Param("payWay") String payWay);
+
+    void updateBookToPayMMDSuccessByBids(@Param("bookItems") List<String> bookItems, @Param("totalDoubleMMDPrice") Double totalDoubleMMDPrice, @Param("payway") int payway);
 }

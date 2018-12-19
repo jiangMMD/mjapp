@@ -7,6 +7,15 @@
         VALUES (#{uPhone}, #{uNick}, #{uIntegral}, #{deviceId}, #{channelId}, #{source}, '系统', now())
     </insert>
 
+    <insert id="addShipAddress">
+        insert into shipaddress(uid, delivery_name, delivery_phone, delivery_address,
+        isdefault, zipcode, province, city, districtn, street, crtuser, crtdate)
+        VALUES (#{uid}, #{param.name}, #{param.phone}, #{param.address},
+        (select case when c.count > 0 then 0 when c.count = 0 then 1 else 0 end
+         from (select count(*) count from shipaddress sa where sa.uid = #{uid} and sa.isdefault) c),
+        #{param.zipcode}, #{param.province},#{param.city},#{param.districtn}, #{param.street}, '系统', now())
+    </insert>
+
     <update id="updateUserBaseInfo" parameterType="user">
         update user set u_qrcode = #{uQrcode}, token = #{token} where u_id = #{uId}
     </update>
@@ -26,6 +35,24 @@
     <update id="updateUserInteger">
         update user set u_integral = #{getInteger} where u_id = #{uid}
     </update>
+
+    <update id="updateShipAddress">
+        update shipaddress set delivery_name = #{param.name}, delivery_phone = #{param.phone}, delivery_address = #{param.address},
+          zipcode = #{param.zipcode}, province = #{param.province}, city = #{param.city}, districtn = #{param.districtn},
+          street = #{param.street}, `update` = now() where id = #{param.id}
+    </update>
+
+    <update id="setDefaultAddress">
+        update shipaddress set isdefault = 1 where id = #{id}
+    </update>
+
+    <update id="setNoDefaulAddress">
+        update shipaddress set isdefault = NULL where uid = (select c.uid from (select uid from shipaddress where id = #{id}) c)
+    </update>
+
+    <delete id="delShipAddress">
+        DELETE from shipaddress where id in <foreach collection="ids" item="id" open="(" close=")" separator=",">#{id}</foreach>
+    </delete>
 
     <!--根据token加载用户的所有数据信息-->
     <select id="getUserWithToken" resultType="com.mmd.mjapp.model.User">
@@ -53,5 +80,12 @@
         select id, delivery_name, delivery_phone, delivery_address, province, city, districtn, street, zipcode from shipaddress
         where isdefault = '1' and recsts = '1' and uid = #{uid}
     </select>
+
+    <select id="queryShipAddress" resultType="map">
+        select id, delivery_name, delivery_address, delivery_phone,
+         isdefault, zipcode, province, city, districtn, street
+         from shipaddress where recsts = '1' and uid = #{uid}
+    </select>
+
 
 </mapper>

@@ -37,57 +37,31 @@ public class LoginHandlerInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object o) throws Exception {
         String token = request.getHeader("token");
+        boolean flg = false;
         if (token != null) {
             //校验token值。
             Claims claims = TokenUtil.verifyJavaWebToken(token);
             if (claims != null) {
                 //查询该token是否存在
-                String id = claims.getId();
-                if (!StringUtils.isEmpty(id)) {
-                    User user = redisUtils.getUserInfo(id);
-                    if (user != null) {
-                        request.setAttribute("user", user);
-                        request.setAttribute("token", token);
-                        return true;
-                    }
-                }
+                flg = checkToken(request, token);
             }
         }
+        if (!flg) {
+            noAccess(response);
+            return false;
+        }
+
         Cookie[] cookies = request.getCookies();
         if (cookies == null) {
             noAccess(response);
             return false;
         }
-        boolean flg = false;
         for (Cookie cookie : cookies) {
             String name = cookie.getName();
             if ("token".equals(name)) {
                 String tokenVal = cookie.getValue();
-                //校验token值。
-                Claims claims = TokenUtil.verifyJavaWebToken(tokenVal);
-                //说明该token是合法值
-                if (claims != null) {
-                    //查询该token是否存在
-//                    String id = redisClient.get(tokenVal);
-                    String id = claims.getId();
-                    System.out.println("客户ID:" +id);
-                    if (!StringUtils.isEmpty(id)) {
-//                        User user = (User) redisClient.getObj("user_" + id);
-                        User user = redisUtils.getUserInfo(id);
-                        if (user != null) {
-                            request.setAttribute("user", user);
-                            request.setAttribute("token", tokenVal);
-                            flg = true;
-                        }
-                    } else {
-                        //根据该tokenVal去数据库加载数据， 如果该token存在于用户数据表中，那么直接重新加载用户数据到redis中去
-                        User userDb = userDao.getUserWithToken(tokenVal);
-                        redisUtils.setUserInfo(userDb);
-                        request.setAttribute("user", userDb);
-                        request.setAttribute("token", tokenVal);
-                        flg = true;
-                    }
-                }
+                //校验token合法行，是不是通过服务器生成的。
+                flg = checkToken(request, tokenVal);
             }
         }
         if (!flg) {
@@ -95,6 +69,39 @@ public class LoginHandlerInterceptor implements HandlerInterceptor {
             return false;
         }
         return true;
+    }
+
+    /**
+     * 检验token
+     */
+    private boolean checkToken (HttpServletRequest request, String tokenVal) {
+        Claims claims = TokenUtil.verifyJavaWebToken(tokenVal);
+        System.out.println(claims);
+        //说明该token是合法值
+        if (claims != null) {
+            //查询该token是否存在
+            String id = claims.getId();
+            System.out.println("客户ID:" + id);
+            if (!StringUtils.isEmpty(id)) {
+                User user = redisUtils.getUserInfo(id);
+                if (user != null) {
+                    request.setAttribute("user", user);
+                    request.setAttribute("token", tokenVal);
+                    return true;
+                } else {
+                    //根据该tokenVal去数据库加载数据， 如果该token存在于用户数据表中，那么直接重新加载用户数据到redis中去
+                    User userDb = userDao.getUserWithToken(tokenVal);
+                    if (userDb != null) {
+                        //没有该用户
+                        redisUtils.setUserInfo(userDb);
+                        request.setAttribute("user", userDb);
+                        request.setAttribute("token", tokenVal);
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     @Override

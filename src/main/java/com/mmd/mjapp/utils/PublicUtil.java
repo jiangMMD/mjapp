@@ -439,6 +439,18 @@ public class PublicUtil {
         return obj == null || "".equals(obj);
     }
 
+
+    /**
+     * @return
+     */
+    public static String getNo() {
+        SimpleDateFormat sfDate = new SimpleDateFormat("yyMMddHHmmssSSS");
+        String strDate = sfDate.format(new Date());
+        //为了防止高并发重复,再获取3个随机数
+        String random = getRandom(3);
+        return strDate + random;
+    }
+
     /**
      * 生成订单编号
      *

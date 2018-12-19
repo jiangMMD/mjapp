@@ -110,8 +110,18 @@ public class BookController {
         return bookService.getAllBookList(state);
     }
 
+
     @PostMapping("/getBookDetail")
     public Result getBookDetail(@RequestBody Map<String, Object> params) {
         return bookService.getBookDetail(String.valueOf(params.get("bid")));
+    }
+
+    /**
+     * 确认订单
+     */
+    @PostMapping("/cfmBook")
+    public Result cfmBook(@RequestBody Map<String, Object> param) {
+        System.out.println(param);
+        return new Result();
     }
 }

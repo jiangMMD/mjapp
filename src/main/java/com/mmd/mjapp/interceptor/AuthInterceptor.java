@@ -23,8 +23,8 @@ public class AuthInterceptor extends WebMvcConfigurerAdapter {
                 .addPathPatterns("/product/*") //拦截订单
                 .addPathPatterns("/home/*")
                 .addPathPatterns("/book/*") //拦截订单
+                .addPathPatterns("/pay/*")
 
-                .excludePathPatterns("/pay/*")
                 .excludePathPatterns("/base/*")
                 .excludePathPatterns("/user/login") //登录
                 .excludePathPatterns("/user/regist") //注册
