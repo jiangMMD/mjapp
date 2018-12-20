@@ -138,6 +138,11 @@
         select pid, starlevel from prod_evaluate where bid = #{bid}
     </select>
 
+    <select id="getCollectMerchantList" resultType="map">
+        select mc.mer_id, m.mer_name, m.mer_homeicon
+         from merchant_collect mc left join merchant m on mc.mer_id = m.mer_id
+    </select>
+
     <insert id="saveEvaluate" useGeneratedKeys="true" keyProperty="eid" keyColumn="id">
         insert into prod_evaluate(bid, pid, sku_id,  uid, sw_id, starlevel, evdate)
         VALUES (#{params.bid}, (select pid from bookitem where id = #{params.bid}),
@@ -145,6 +150,11 @@
          #{uid}, #{params.id}, #{params.starlevel}, now())
         on DUPLICATE key
          update sw_id = #{params.id}, starlevel= #{params.starlevel}
+    </insert>
+
+    <insert id="collectMerchant">
+        insert into merchant_collect (mer_id, uid, coll_date)
+        VALUES (#{mer_id}, #{uid}, now())
     </insert>
 
     <resultMap id="browDate" type="map">
@@ -161,6 +171,11 @@
 
     <delete id="delCollectProd">
         DELETE FROM prod_collect where id in
+        <foreach collection="ids" item="id" open="(" close=")" separator=",">#{id}</foreach>
+    </delete>
+
+    <delete id="delCollectMerchant">
+        DELETE FROM merchant_collect where id in
         <foreach collection="ids" item="id" open="(" close=")" separator=",">#{id}</foreach>
     </delete>
 

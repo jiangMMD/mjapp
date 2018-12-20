@@ -55,10 +55,22 @@
          from productsinfo where categoryid = #{id} and recsts = '1' and state = 1
     </select>
 
-    <select id="getProdByMer" resultType="map">
-        select pid, mer_id, (select mer_name from merchant where merchant.mer_id = productsinfo.mer_id) mer_name,
-         homeimg, pname, title, shopprice, shopmmdprice
-         from productsinfo where mer_id = #{mer_id} and recsts = '1' and state = 1
+    <select id="getProdByMer" resultType="map" resultMap="merInfos">
+         select m.mer_id, m.mer_name, m.mer_storeimg, p.pid, p.pname, p.homeimg, p.shopprice, p.shopmmdprice
+          from merchant m left join productsinfo p on m.mer_id = p.mer_id
+         where m.mer_id = #{mer_id} and m.recsts = '1' and p.recsts = '1' and p.state = 1
     </select>
 
+    <resultMap id="merInfos" type="map">
+        <id column="mer_id" property="mer_id"/>
+        <result column="mer_name" property="mer_name"/>
+        <result column="mer_storeimg" property="mer_storeimg"/>
+        <collection property="prodList" ofType="map" javaType="arraylist">
+            <id column="pid" property="pid"/>
+            <result column="pname" property="pname"/>
+            <result column="homeimg" property="homeimg"/>
+            <result column="shopprice" property="shopprice"/>
+            <result column="shopmmdprice" property="shopmmdprice"/>
+        </collection>
+    </resultMap>
 </mapper>

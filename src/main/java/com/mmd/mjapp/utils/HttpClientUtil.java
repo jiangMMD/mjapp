@@ -204,7 +204,7 @@ public class HttpClientUtil {
             httpPost.setEntity(new UrlEncodedFormEntity(getparams(params), "UTF-8"));
             response = hc.execute(httpPost);
             entity = response.getEntity();
-            result = EntityUtils.toString(entity);
+            result = EntityUtils.toString(entity, "UTF-8");
         } catch (Exception e) {
             log.error(e.getMessage());
             throw new RuntimeException(e);

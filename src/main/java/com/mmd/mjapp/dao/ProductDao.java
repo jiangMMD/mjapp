@@ -48,4 +48,10 @@ public interface ProductDao {
     void updateAvgEvaluate(@Param("bid") String bid);
 
     void updateProdOldEvel(@Param("resMap") Map<String, Object> resMap);
+
+    void collectMerchant(@Param("mer_id") String mer_id, @Param("uid") Long uid);
+
+    void delCollectMerchant(@Param("ids") List<String> ids);
+
+    List<Map<String, Object>> getCollectMerchantList(@Param("uid") Long uid);
 }

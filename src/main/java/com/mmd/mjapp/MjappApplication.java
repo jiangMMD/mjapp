@@ -14,4 +14,5 @@ public class MjappApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(MjappApplication.class, args);
 	}
+
 }

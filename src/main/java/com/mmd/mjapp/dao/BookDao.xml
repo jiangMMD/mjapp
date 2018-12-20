@@ -40,6 +40,11 @@
         </foreach>
     </insert>
 
+    <insert id="insertBookOperLog">
+        insert into book_oper(bid, type, oper_desc, opertime)
+        VALUES (#{bid}, #{type}, #{operdesc}, now())
+    </insert>
+
     <update id="updateCatPrice">
         update shopcat sc set
         rmbmoney = (select ifnull(sum((select price from prod_sku where sku_id = se.sku_id) * se.num), 0) from shopentry se where se.cat_id = sc.cat_id),
@@ -124,7 +129,7 @@
         p.pname, p.homeimg
          from bookitem bt left join bookprod bp on bt.bid = bp.bid
          left join productsinfo p on bp.pid = p.pid
-         where bt.uid = #{uid}
+         where bt.recsts = '1' and bt.uid = #{uid}
          <if test="state != null and state != ''">
              and bt.state = #{state}
          </if>
@@ -169,6 +174,14 @@
         </foreach>
     </select>
 
+    <select id="queryBuyProdSkuNum" resultType="map">
+        select sku_id, num from bookprod where bid = #{param.bid}
+    </select>
+
+    <select id="getBookState" resultType="map">
+        select bid, state from bookitem where bid = #{param.bid} and recsts = '1'
+    </select>
+
     <resultMap id="shopCatInfo" type="map">
         <id column="cat_id" property="cat_id"/>
         <result column="mmdmoney" property="mmdmoney"/>
@@ -210,6 +223,28 @@
         update bookitem set payprice = topaymmdprice, paytime = now(),
         ispay = 1, paymenttype = 2, paymentway = #{payWay}, state = 2
         where bid in <foreach collection="bookItems" item="bid" separator="," open="(" close=")">#{bid}</foreach>
+    </update>
+
+    <update id="cancelBook">
+        update bookitem set state = 5, cancelreason = #{param.cancelreason}, canceltime = now()
+         where bid = #{param.bid}
+    </update>
+
+    <update id="releaseProdSkuStock">
+        update prod_sku set repertory = repertory + #{map.num} where sku_id = #{map.sku_id}
+    </update>
+
+    <update id="resetProdStock">
+        update productsinfo set inventory = (select sum(repertory) from prod_sku sku where sku.pid = #{param.bid})
+        where pid in (select pid from bookprod where bookprod.bid = #{param.bid})
+    </update>
+    
+    <update id="delBook">
+        update bookitem set recsts = 'D' where bid = #{bid}
+    </update>
+
+    <update id="cfmBook">
+        update bookitem set state = 4, cfmtime = now() where bid = #{bid}
     </update>
 
 </mapper>

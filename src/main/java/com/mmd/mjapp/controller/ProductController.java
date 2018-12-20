@@ -147,4 +147,33 @@ public class ProductController {
         return productService.getAppraise(page, String.valueOf(params.get("pid")));
     }
 
+    /**
+     * 收藏店铺
+     */
+    @PostMapping("/collectMerchant")
+    public Result collectMerchant(@RequestBody Map<String, Object> params) {
+        if(PublicUtil.isEmptyObj(params.get("mer_id"))) {
+            return new Result().fail("店铺ID不能为空！");
+        }
+        return productService.collectMerchant(params);
+    }
+
+    /**
+     * 取消店铺收藏
+     */
+    @PostMapping("/delCollectMerchant")
+    public Result delCollectMerchant(@RequestBody Map<String, Object> params) {
+        if(PublicUtil.isEmptyObj(params.get("ids"))) {
+            return new Result().fail("ID不能为空！");
+        }
+        return productService.delCollectMerchant(params);
+    }
+
+    @PostMapping("/getCollectMerchantList")
+    public Result getCollectMerchantList(@RequestBody Map<String, Object> params) throws Exception {
+        Page page = PublicUtil.mapToEntity(params, Page.class);
+        return productService.getCollectMerchantList(page);
+    }
+
+
 }

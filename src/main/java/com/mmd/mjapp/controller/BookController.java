@@ -117,11 +117,60 @@ public class BookController {
     }
 
     /**
-     * 确认订单
+     * 确认收货
      */
     @PostMapping("/cfmBook")
     public Result cfmBook(@RequestBody Map<String, Object> param) {
-        System.out.println(param);
-        return new Result();
+        if(PublicUtil.isEmptyObj(param.get("bid"))) {
+            return new Result().fail("订单ID不能为空！");
+        }
+        return bookService.cfmBook(param);
     }
+
+    /**
+     * 取消订单
+     */
+    @PostMapping("/cancelBook")
+    public Result cancelBook(@RequestBody Map<String, Object> param) {
+        if(PublicUtil.isEmptyObj(param.get("bid"))) {
+            return new Result().fail("订单ID不能为空！");
+        }
+        return bookService.cancelBook(param);
+    }
+
+    /**
+     * 删除订单
+     */
+    @PostMapping("/delBook")
+    public Result delBook(@RequestBody Map<String, Object> param) {
+        if(PublicUtil.isEmptyObj(param.get("bid"))) {
+            return new Result().fail("订单ID不能为空！");
+        }
+        return bookService.delBook(param);
+    }
+
+
+    /**
+     * 提醒发货
+     */
+    @PostMapping("remindDeliver")
+    public Result remindDeliver(@RequestBody Map<String, Object> param) {
+        if(PublicUtil.isEmptyObj(param.get("bid"))) {
+            return new Result().fail("订单ID不能为空！");
+        }
+        return bookService.remindDeliver(param);
+    }
+
+    /**
+     * 查看物流
+     */
+    @PostMapping("/queryLogistics")
+    public Result queryLogistics(@RequestBody Map<String, Object> param) {
+        if(PublicUtil.isEmptyObj(param.get("bid"))) {
+            return new Result().fail("订单ID不能为空！");
+        }
+        return bookService.queryLogistics(param);
+    }
+
+
 }
