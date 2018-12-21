@@ -5,6 +5,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -15,6 +18,10 @@ public class RedisUtils {
 
     @Autowired
     private RedisTemplate redisTemplate;
+
+    public Set<String> keys(String reg) {
+        return redisTemplate.keys(reg);
+    }
 
     /**
      * 设置用户相关信息
@@ -61,7 +68,6 @@ public class RedisUtils {
         redisTemplate.expire(key, 60 * 10, TimeUnit.SECONDS);
     }
 
-
     public String get(String key) throws Exception {
         return (String) redisTemplate.opsForValue().get(key);
     }
@@ -69,6 +75,10 @@ public class RedisUtils {
 
     public Object getObj(String key) throws Exception {
         return redisTemplate.opsForValue().get(key);
+    }
+
+    public void deleteByKeys(Collection keys) throws Exception {
+        redisTemplate.delete(keys);
     }
 
     public void deleteByKey(String key) throws Exception {
