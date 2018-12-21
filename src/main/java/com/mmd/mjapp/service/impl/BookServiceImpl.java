@@ -8,7 +8,6 @@ import com.mmd.mjapp.dao.ProductDao;
 import com.mmd.mjapp.dao.UserDao;
 import com.mmd.mjapp.exception.ResultException;
 import com.mmd.mjapp.model.User;
-import com.mmd.mjapp.pjo.BookModel;
 import com.mmd.mjapp.pjo.Page;
 import com.mmd.mjapp.pjo.Result;
 import com.mmd.mjapp.pjo.ResultPage;
@@ -392,28 +391,41 @@ public class BookServiceImpl implements BookService {
      * 3:待收货-- （5，6）
      * 4:待评价-- （5，7，（8--尚未评价才有））
      *
+     * @param page
      * @param state
      */
     @Override
-    public Result getAllBookList(String state) {
+    public Result getAllBookList(Page page, String state) {
         User user = getUserInfo();
-        List<Map<String, Object>> list;
-        list = bookDao.getAllBookList(user.getuId(), state);
+        PageHelper.startPage(page);
+        List<Map<String, Object>> bidList = bookDao.getBookItemList(user.getuId(), state);
+//        list = bookDao.getAllBookList(user.getuId(), state);
+        List<Map<String, Object>> list = new ArrayList<>();
+        for (Map<String, Object> map : bidList) {
+            if (1 == (Long) map.get("type")) { //查询线上订单
+                list.add(bookDao.getBookItemDetailList(String.valueOf(map.get("bid"))));
+            } else if (2 == (Long) map.get("type")) {
+                list.add(bookDao.getOffBook(String.valueOf(map.get("bid"))));
+            }
+        }
+
         //设置订单按钮状态
         for (Map<String, Object> map : list) {
-            String bookState = String.valueOf(map.get("state"));
-            if ("1".equals(bookState)) { //待付款
-                map.put("btnInfo", createBtn(new String[]{"1", "2"}));
-            } else if ("2".equals(bookState)) { //待发货
-                map.put("btnInfo", createBtn(new String[]{"4"}));
-            } else if ("3".equals(bookState)) {
-                map.put("btnInfo", createBtn(new String[]{"5", "6"}));
-            } else if ("4".equals(bookState)) {
-                if ("1".equals(map.get("isevaluate"))) {
-                    //如果已经评价，那么就不在让继续评价
-                    map.put("btnInfo", createBtn(new String[]{"5", "7", "8"}));
-                } else {
-                    map.put("btnInfo", createBtn(new String[]{"5", "7"}));
+            if ((Long) map.get("btype") == 1) { //线上订单
+                String bookState = String.valueOf(map.get("state"));
+                if ("1".equals(bookState)) { //待付款
+                    map.put("btnInfo", createBtn(new String[]{"1", "2"}));
+                } else if ("2".equals(bookState)) { //待发货
+                    map.put("btnInfo", createBtn(new String[]{"4"}));
+                } else if ("3".equals(bookState)) {
+                    map.put("btnInfo", createBtn(new String[]{"5", "6"}));
+                } else if ("4".equals(bookState)) {
+                    if ("1".equals(String.valueOf(map.get("isevaluate")))) {
+                        //如果已经评价，那么就不在让继续评价
+                        map.put("btnInfo", createBtn(new String[]{"5", "7", "8"}));
+                    } else {
+                        map.put("btnInfo", createBtn(new String[]{"5", "7"}));
+                    }
                 }
             }
         }
