@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.mmd.mjapp.dao.OfflineDao">
+
+    <!--查询商铺首页-->
+    <select id="getShop" resultType="com.mmd.mjapp.model.OfflineMerchant">
+        select mer_id, mer_name, mer_desc, mer_land, mer_address,mer_range,
+         mer_homeicon, mer_homeimg,average_score
+          from offline_merchant where recsts = '1' order by hotval desc, hits desc
+    </select>
+
+    <!--查询商铺产品-->
+    <select id="getProdByMer" resultType="map">
+        select pid, mer_id, (select mer_name from offline_merchant where offline_merchant.mer_id = offline_prod_list.mer_id) mer_name,
+          pname, title, homeimg, ativity_time,pro_desc
+         from offline_prod_list where mer_id = #{mer_id} and recsts = '1' and state = 1
+    </select>
+
+
+    <!--查询商铺评价信息-->
+    <select id="getEvaluate" resultType="map">
+        select pe.id, (select u_nick from user u where u_id = pe.uid) u_nick,
+        (select s.word from sightword s where s.id = pe.sw_id) content,
+        date_format(evdate, '%Y-%m-%d %T') evdate, starlevel from offline_evaluate pe where mer_id = #{mer_id}
+    </select>
+
+
+    <!--根据商铺ID查询商铺详细信息-->
+    <select id="getDetailed" resultType="map">
+        select mer_id, mer_name, mer_address,mer_insideimg, mer_homeicon, mer_linkman,
+        mer_linkphone, mer_weixin, mer_qq,average_score,mer_time,
+         total_comment,good_comment,middling_comment,bad_comment,end_time,business_license
+          from offline_merchant where mer_id = #{mer_id}
+    </select>
+
+</mapper>
