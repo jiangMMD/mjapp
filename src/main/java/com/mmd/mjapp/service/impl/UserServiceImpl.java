@@ -333,9 +333,31 @@ public class UserServiceImpl implements UserService {
         //如果没有默认， 那么就设置默认
         User user = getUserInfo();
         if(PublicUtil.isEmptyObj(param.get("id"))) {
-            userDao.addShipAddress(param, user.getuId());
+            //查看是否已经有默认地址
+            int count = userDao.getShipAddress(user.getuId(), null);
+            if(count == 0) { //如果没有默认地址，那么新增的就是默认收货地址
+                param.put("isdefault", 1);
+                userDao.addShipAddress(param, user.getuId());
+            }else{
+                if("1".equals(String.valueOf(param.get("isdefault")))) { //如果设置为默认的收货地址
+                    //取消原有默认地址， 更新当前为默认收货地址
+                    userDao.cancelDefaultShipAddress(user.getuId());
+                }
+                userDao.addShipAddress(param, user.getuId());
+            }
         }else{
-            userDao.updateShipAddress(param);
+            //查看是否已经有默认地址
+            int count = userDao.getShipAddress(user.getuId(), String.valueOf(param.get("id")));
+            if(count == 0) { //只有当前一个收货地址
+                param.put("isdefault", 1);
+                userDao.updateShipAddress(param);
+            }else{
+                if("1".equals(String.valueOf(param.get("isdefault")))) { //如果设置当前为默认的收货地址
+                    //取消原有默认地址， 更新当前为默认收货地址
+                    userDao.cancelDefaultShipAddress(user.getuId());
+                }
+                userDao.updateShipAddress(param);
+            }
         }
         return new Result().success();
     }

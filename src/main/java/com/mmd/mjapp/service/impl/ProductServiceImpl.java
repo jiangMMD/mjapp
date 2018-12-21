@@ -175,6 +175,28 @@ public class ProductServiceImpl implements ProductService {
         return new Result().success(new ResultPage<>(list));
     }
 
+    @Override
+    public Result collectMerchant(Map<String, Object> params) {
+        User user = getUserInfo();
+        String mer_id = String.valueOf(params.get("mer_id"));
+        productDao.collectMerchant(mer_id, user.getuId());
+        return new Result().success();
+    }
+
+    @Override
+    public Result delCollectMerchant(Map<String, Object> params) {
+        String ids = String.valueOf(params.get("ids"));
+        productDao.delCollectMerchant(PublicUtil.toListByIds(ids));
+        return new Result().success();
+    }
+
+    @Override
+    public Result getCollectMerchantList(Page page) {
+        PageHelper.startPage(page);
+        List<Map<String, Object>> list = productDao.getCollectMerchantList(getUserInfo().getuId());
+        return new Result().success(new ResultPage<>(list));
+    }
+
     //加载用户信息
     private User getUserInfo() {
         return (User) request.getAttribute("user");

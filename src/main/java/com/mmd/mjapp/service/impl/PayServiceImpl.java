@@ -1,6 +1,7 @@
 package com.mmd.mjapp.service.impl;
 
 import com.mmd.mjapp.config.RedisUtils;
+import com.mmd.mjapp.constant.RedisKey;
 import com.mmd.mjapp.dao.BookDao;
 import com.mmd.mjapp.dao.PayDao;
 import com.mmd.mjapp.model.User;
@@ -14,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -50,12 +52,14 @@ public class PayServiceImpl implements PayService {
                 if (bookInfo == null) {
                     return new Result().fail("订单不存在或已失效！");
                 }
-                Double mmdprice = (Double) bookInfo.get("mmdprice");
+                Double mmdprice = Double.valueOf(String.valueOf(bookInfo.get("mmdprice")));
                 Result resMap = MMDUtils.mmdPayToCompany(user.getuMmdNo(), String.valueOf(mmdprice));
-//                Result resMap = new Result();
                 if (resMap.getCode() == 1) {//处理resMap
                     bookDao.updateBookToPayMMDSuccess(bid, mmdprice, "4");
                     payDao.insertPayInfo(bid, mmdprice, 2, 1, 1); //记录支付成功信息
+                    //查询该主订单下的所有子订单。
+                    List<String> bookitems = bookDao.getAllBookByPickId(bid);
+                    dealBookState(bookitems);
                 } else {
                     payDao.insertPayInfo(bid, mmdprice, 2, 1, 0); //记录支付失败信息
                     /**
@@ -71,11 +75,11 @@ public class PayServiceImpl implements PayService {
                     Double topaymmdprice = (Double) map.get("topaymmdprice");
                     totalDoubleMMDPrice = totalDoubleMMDPrice + topaymmdprice;
                 }
-//                Result resMap = MMDUtils.mmdPayToCompany(user.getuMmdNo(), String.valueOf(totalDoubleMMDPrice));
-                Result resMap = new Result();
+                Result resMap = MMDUtils.mmdPayToCompany(user.getuMmdNo(), String.valueOf(totalDoubleMMDPrice));
                 if (resMap.getCode() == 1) {
                     bookDao.updateBookToPayMMDSuccessByBids(bookItems, totalDoubleMMDPrice, 4);
                     payDao.insertPayInfo(bid, totalDoubleMMDPrice, 2, bookItems.size() > 0 ? 2 : 3, 1); //记录支付成功信息
+                    dealBookState(bookItems);
                 } else {
                     payDao.insertPayInfo(bid, totalDoubleMMDPrice, 2, bookItems.size() > 0 ? 2 : 3, 0); //记录支付失败信息
                 }
@@ -83,6 +87,31 @@ public class PayServiceImpl implements PayService {
             }
         }
         return res;
+    }
+
+    @Override
+    public Result offlinePayWithMMD(Map<String, Object> param) throws Exception {
+        User user = getUserInfo();
+        if (user.getuMmdNo() == null) {
+            return new Result().fail("请先绑定MMD账户！");
+        }
+        //校验验证码
+        Result res = check(param);
+        if (res.getCode() == 1) {
+            //生成订单信息
+            bookDao.createOffBook(param);
+            payDao.insertPayInfo(String.valueOf(param.get("id")), Double.valueOf(String.valueOf(param.get("money"))),
+                    2, null, 1); //添加支付信息
+        }
+        return res;
+    }
+
+    /**
+     * 处理Redis中的订单
+     */
+    private void dealBookState(List<String> bookitems) throws Exception {
+        redisUtils.deleteWithSet(RedisKey.TOBEPAY, bookitems.toArray());
+        redisUtils.deleteByKeys(bookitems);
     }
 
     /**

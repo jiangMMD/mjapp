@@ -21,4 +21,14 @@ public interface BookService {
     Result getAllBookList(String state);
 
     Result getBookDetail(String bid);
+
+    Result cancelBook(Map<String, Object> param) throws Exception;
+
+    Result delBook(Map<String, Object> param);
+
+    Result cfmBook(Map<String, Object> param);
+
+    Result remindDeliver(Map<String, Object> param) throws Exception;
+
+    Result queryLogistics(Map<String, Object> param);
 }

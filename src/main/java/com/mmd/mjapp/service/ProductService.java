@@ -27,4 +27,10 @@ public interface ProductService {
     Result getCollections(Page page);
 
     Result getAppraise(Page page, String pid);
+
+    Result collectMerchant(Map<String, Object> params);
+
+    Result delCollectMerchant(Map<String, Object> params);
+
+    Result getCollectMerchantList(Page page);
 }

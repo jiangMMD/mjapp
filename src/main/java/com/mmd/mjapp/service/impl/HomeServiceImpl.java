@@ -164,10 +164,7 @@ public class HomeServiceImpl implements HomeService {
     @Override
     public Result getProdByMer(Page page, String mer_id) {
         PageHelper.startPage(page);
-        List<Map<String, Object>> list = homeDao.getProdByMer(mer_id);
-        return new Result().success(new ResultPage<>(list));
+        Map<String, Object> merProds = homeDao.getProdByMer(mer_id);
+        return new Result().success(merProds);
     }
-
-
-
 }

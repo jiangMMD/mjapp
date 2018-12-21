@@ -7,4 +7,6 @@ import java.util.Map;
 public interface PayService {
 
     Result prodPayWithMMD(Map<String, Object> param) throws Exception;
+
+    Result offlinePayWithMMD(Map<String, Object> param) throws Exception;
 }

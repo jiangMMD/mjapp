@@ -8,10 +8,12 @@ import com.mmd.mjapp.dao.ProductDao;
 import com.mmd.mjapp.dao.UserDao;
 import com.mmd.mjapp.exception.ResultException;
 import com.mmd.mjapp.model.User;
+import com.mmd.mjapp.pjo.BookModel;
 import com.mmd.mjapp.pjo.Page;
 import com.mmd.mjapp.pjo.Result;
 import com.mmd.mjapp.pjo.ResultPage;
 import com.mmd.mjapp.service.BookService;
+import com.mmd.mjapp.utils.KD100Utils;
 import com.mmd.mjapp.utils.PublicUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -96,6 +98,7 @@ public class BookServiceImpl implements BookService {
 
     /**
      * 购物车结算
+     *
      * @param entry_ids
      */
     @Override
@@ -178,8 +181,8 @@ public class BookServiceImpl implements BookService {
     public Result confirmBook(Map<String, Object> params) throws Exception {
         User user = getUserInfo();
         //校验用户是否绑定了MMD, 第一版本必须绑定MMD; 测试账户不做绑定
-        if(user.getuMmdNo() == null && Objects.equals("13788957291", user.getuPhone())) {
-            return new Result().fail("请先绑定MMD账户！");
+        if (user.getuMmdNo() == null && !Objects.equals("13788957291", user.getuPhone())) {
+            return new Result().bootbox("请先绑定MMD账户！");
         }
         String entry_ids = String.valueOf(params.get("entry_ids"));
         List<String> entryIds = PublicUtil.toListByIds(entry_ids);
@@ -194,6 +197,7 @@ public class BookServiceImpl implements BookService {
         //生成订单项详细
         Map<String, Object> bookInfos = (Map<String, Object>) params.get("bookInfo");
         System.out.println(bookInfos);
+        List<String> list = new ArrayList<>();
         for (Map.Entry<String, Object> entry : bookInfos.entrySet()) {
             //生成订单编号
             List<Map<String, Object>> prodInfo = (List<Map<String, Object>>) entry.getValue();
@@ -201,6 +205,7 @@ public class BookServiceImpl implements BookService {
             Map<String, Object> book = createBook(prodInfo, params);
             //创建订单ITEM信息，
             bookDao.createBookItem(book, user.getuId(), String.valueOf(params.get("address_id")), String.valueOf(params.get("bookid")));
+            list.add(String.valueOf(book.get("bid")));
             //添加产品项信息
             bookDao.createProdInfo(String.valueOf(book.get("bid")), prodInfo);
         }
@@ -215,6 +220,11 @@ public class BookServiceImpl implements BookService {
         res.put("rmbprice", params.get("rmbprice"));
         res.put("mmdprice", params.get("mmdprice"));
         redisUtils.setUserInfo(user); //当数据库没有错误的时候，那么更新用户信息到redis中。
+        //将该新的待支付订单放入Redis数据库中
+        for (String bookitem_id : list) {
+            redisUtils.set(RedisKey.TOBEPAY + bookitem_id, 1, 60 * 30);
+        }
+        redisUtils.addSet(RedisKey.TOBEPAY, list.toArray());
         return new Result().success(res);
     }
 
@@ -240,11 +250,11 @@ public class BookServiceImpl implements BookService {
         String mer_id = String.valueOf(prodInfo.get(0).get("mer_id"));
         res.put("mer_id", mer_id);
         //处理卖家留言信息
-        if(!PublicUtil.isEmptyObj(params.get("leaveword"))) {
+        if (!PublicUtil.isEmptyObj(params.get("leaveword"))) {
             try {
                 List<Map<String, Object>> mapList = (List<Map<String, Object>>) params.get("leaveword");
                 for (Map<String, Object> map : mapList) {
-                    if(Objects.equals(mer_id, String.valueOf(map.get("mer_id")))){
+                    if (Objects.equals(mer_id, String.valueOf(map.get("mer_id")))) {
                         res.put("word", map.get("word"));
                     }
                 }
@@ -381,6 +391,7 @@ public class BookServiceImpl implements BookService {
      * 2:待发货 -- （4）
      * 3:待收货-- （5，6）
      * 4:待评价-- （5，7，（8--尚未评价才有））
+     *
      * @param state
      */
     @Override
@@ -450,6 +461,116 @@ public class BookServiceImpl implements BookService {
     @Override
     public Result getBookDetail(String bid) {
         return new Result().success(bookDao.getBookDetail(bid));
+    }
+
+    /**
+     * 取消订单
+     *
+     * @param param
+     * @return
+     */
+    @Override
+    public Result cancelBook(Map<String, Object> param) throws Exception {
+        //检查订单状态，判断是否能够进行取消
+        Map<String, Object> bookState = bookDao.getBookState(param);
+        if (bookState == null) {
+            return new Result().fail("操作失败，该订单不存在!");
+        } else if (!"1".equals(String.valueOf(bookState.get("state")))) {
+            return new Result().fail("该订单不是待支付订单，无法取消！");
+        }
+        bookDao.cancelBook(param);
+        //查询产品购买数量
+        List<Map<String, Object>> prodSkuInfos = bookDao.queryBuyProdSkuNum(param);
+        //释放产品SKU库存,
+        for (Map<String, Object> map : prodSkuInfos) {
+            bookDao.releaseProdSkuStock(map);
+        }
+        //重新计算产品库存
+        bookDao.resetProdStock(param);
+        //添加订单表操作记录
+        bookDao.insertBookOperLog(String.valueOf(param.get("bid")), 5, "用户手动取消订单");
+        dealRedisBook(String.valueOf(param.get("bid")));
+        return new Result().success();
+    }
+
+    //处理redis中待处理订单信息
+    private void dealRedisBook(String bid) throws Exception {
+        redisUtils.deleteByKey(RedisKey.TOBEPAY + bid);
+        redisUtils.deleteWithSet(RedisKey.TOBEPAY, bid);
+    }
+
+    /**
+     * 删除订单
+     * 只有已经完成的订单才能删除
+     * 操作类型 1:支付 2:揽收 3:确认收货 4:删除 5:取消 6:超时关闭
+     */
+    @Override
+    public Result delBook(Map<String, Object> param) {
+        //检查订单状态，判断是否能够进行删除
+        Map<String, Object> bookState = bookDao.getBookState(param);
+        if (bookState == null) {
+            return new Result().fail("操作失败，该订单不存在!");
+        } else if (!"4".equals(String.valueOf(bookState.get("state")))) {
+            return new Result().fail("该订单尚未完成，无法删除！");
+        }
+        String bid = String.valueOf(param.get("bid"));
+        bookDao.delBook(bid);
+        //添加操作记录
+        bookDao.insertBookOperLog(bid, 4, "用户手动删除订单");
+        return new Result().success();
+    }
+
+    /**
+     * 确认收货
+     */
+    @Override
+    public Result cfmBook(Map<String, Object> param) {
+        Map<String, Object> bookState = bookDao.getBookState(param);
+        if (bookState == null) {
+            return new Result().fail("操作失败，该订单不存在!");
+        } else if (!"3".equals(String.valueOf(bookState.get("state")))) {
+            return new Result().fail("只有待收货的订单确认收货！");
+        }
+        String bid = String.valueOf(param.get("bid"));
+        //执行确认收货操作
+        bookDao.cfmBook(bid);
+        //添加操作记录
+        bookDao.insertBookOperLog(bid, 3, "用户手动确认收货");
+        return new Result().success();
+    }
+
+    /**
+     * 提醒发货， 前期通过发送短信通知发货
+     *
+     * @param param
+     * @return
+     */
+    @Override
+    public Result remindDeliver(Map<String, Object> param) throws Exception {
+        String bid = String.valueOf(param.get("bid"));
+        if (redisUtils.get(RedisKey.INFORMSHIP + bid) != null) {
+            return new Result().fail("已经通知过商家发货, 请过段时间在尝试");
+        } else {
+
+            redisUtils.set(RedisKey.INFORMSHIP + bid, 1);
+        }
+        return new Result().success();
+    }
+
+    /**
+     * 查询物流信息
+     */
+    @Override
+    public Result queryLogistics(Map<String, Object> param) {
+        String bid = String.valueOf(param.get("bid"));
+        //获取物流
+        Map<String, String> shipInfos = bookDao.getBookNoByBid(bid);
+        if (shipInfos == null) {
+            return new Result().fail("该订单没有物流信息！");
+        }
+        Map<String, Object> resMap = KD100Utils.queryKDExpress(shipInfos.get("ship_encode"), shipInfos.get("ship_number"));
+        resMap.put("ship_company", shipInfos.get("ship_company")); //公司
+        return new Result().success(resMap);
     }
 
     private User getUserInfo() {
