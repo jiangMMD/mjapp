@@ -45,4 +45,8 @@ public interface UserDao {
     List<Map<String, Object>> queryShipAddress(@Param("uid") Long uid);
 
     void delShipAddress(@Param("ids") List<String> ids);
+
+    int getShipAddress(@Param("uid") Long uid, @Param("id") String id);
+
+    void cancelDefaultShipAddress(@Param("uid") Long uid);
 }

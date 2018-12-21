@@ -131,7 +131,7 @@ public class BookController {
      * 取消订单
      */
     @PostMapping("/cancelBook")
-    public Result cancelBook(@RequestBody Map<String, Object> param) {
+    public Result cancelBook(@RequestBody Map<String, Object> param) throws Exception {
         if(PublicUtil.isEmptyObj(param.get("bid"))) {
             return new Result().fail("订单ID不能为空！");
         }
@@ -149,12 +149,11 @@ public class BookController {
         return bookService.delBook(param);
     }
 
-
     /**
      * 提醒发货
      */
     @PostMapping("remindDeliver")
-    public Result remindDeliver(@RequestBody Map<String, Object> param) {
+    public Result remindDeliver(@RequestBody Map<String, Object> param) throws Exception {
         if(PublicUtil.isEmptyObj(param.get("bid"))) {
             return new Result().fail("订单ID不能为空！");
         }
@@ -166,6 +165,7 @@ public class BookController {
      */
     @PostMapping("/queryLogistics")
     public Result queryLogistics(@RequestBody Map<String, Object> param) {
+        System.out.println(param);
         if(PublicUtil.isEmptyObj(param.get("bid"))) {
             return new Result().fail("订单ID不能为空！");
         }

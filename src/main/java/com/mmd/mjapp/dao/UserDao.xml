@@ -11,9 +11,7 @@
         insert into shipaddress(uid, delivery_name, delivery_phone, delivery_address,
         isdefault, zipcode, province, city, districtn, street, crtuser, crtdate)
         VALUES (#{uid}, #{param.name}, #{param.phone}, #{param.address},
-        (select case when c.count > 0 then 0 when c.count = 0 then 1 else 0 end
-         from (select count(*) count from shipaddress sa where sa.uid = #{uid} and sa.isdefault) c),
-        #{param.zipcode}, #{param.province},#{param.city},#{param.districtn}, #{param.street}, '系统', now())
+        #{param.isdefault}, #{param.zipcode}, #{param.province},#{param.city},#{param.districtn}, #{param.street}, '系统', now())
     </insert>
 
     <update id="updateUserBaseInfo" parameterType="user">
@@ -39,7 +37,7 @@
     <update id="updateShipAddress">
         update shipaddress set delivery_name = #{param.name}, delivery_phone = #{param.phone}, delivery_address = #{param.address},
           zipcode = #{param.zipcode}, province = #{param.province}, city = #{param.city}, districtn = #{param.districtn},
-          street = #{param.street}, `update` = now() where id = #{param.id}
+          street = #{param.street}, `update` = now(), isdefault = #{param.isdefault} where id = #{param.id}
     </update>
 
     <update id="setDefaultAddress">
@@ -48,6 +46,10 @@
 
     <update id="setNoDefaulAddress">
         update shipaddress set isdefault = NULL where uid = (select c.uid from (select uid from shipaddress where id = #{id}) c)
+    </update>
+
+    <update id="cancelDefaultShipAddress">
+        update shipaddress set isdefault = 0 where uid = #{uid} and recsts = '1'
     </update>
 
     <delete id="delShipAddress">
@@ -85,6 +87,13 @@
         select id, delivery_name, delivery_address, delivery_phone,
          isdefault, zipcode, province, city, districtn, street
          from shipaddress where recsts = '1' and uid = #{uid}
+    </select>
+
+    <select id="getShipAddress" resultType="int">
+        select count(*) from shipaddress where recsts = '1' and isdefault = 1 and uid = #{uid}
+        <if test="id != null and id != ''">
+            and id != #{id}
+        </if>
     </select>
 
 

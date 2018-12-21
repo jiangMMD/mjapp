@@ -181,6 +181,8 @@ public class UserController {
             return new Result().fail("收货人不能为空！");
         }else if(PublicUtil.isEmptyObj(param.get("address"))) {
             return new Result().fail("收货地址不能为空！");
+        }else if(PublicUtil.isEmptyObj(param.get("isdefault"))) {
+            return new Result().fail("默认地址不能为空！");
         }
         return userService.addShipAddress(param);
     }

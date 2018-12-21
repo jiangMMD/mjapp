@@ -26,7 +26,7 @@
 
     <insert id="createBookItem" useGeneratedKeys="true" keyProperty="book.bid" keyColumn="bid">
         insert into bookitem(bookid, mer_id, uid, book_no, address_id, goods_rmbprice, goods_mmdprice,
-        topayrmbprice, topaymmdprice addtime, leaveword)
+        topayrmbprice, topaymmdprice, addtime, leaveword)
         VALUES (#{bookid}, #{book.mer_id}, #{uid}, #{book.bookno}, #{address_id}, #{book.totalrmbprice}, #{book.totalmmdprice},
         #{book.totalrmbprice}, #{book.totalmmdprice},
         now(), #{book.word})
@@ -43,6 +43,11 @@
     <insert id="insertBookOperLog">
         insert into book_oper(bid, type, oper_desc, opertime)
         VALUES (#{bid}, #{type}, #{operdesc}, now())
+    </insert>
+
+    <insert id="createOffBook" useGeneratedKeys="true" keyColumn="id" keyProperty="param.id">
+        insert into offline_book(offmer_id, money, paytype, payway, paytime)
+        VALUES (#{param.offmer_id}, #{param.money}, 2, 4, now())
     </insert>
 
     <update id="updateCatPrice">
@@ -182,6 +187,16 @@
         select bid, state from bookitem where bid = #{param.bid} and recsts = '1'
     </select>
 
+    <select id="getAllBookByPickId" resultType="string">
+        select bid from bookitem where bookid = #{bid}
+    </select>
+
+    <select id="getBookNoByBid" resultType="map">
+        select ship_number, (select encode from express_company ec where ec.id = ship_company) ship_encode,
+        (select name from express_company ec where ec.id = ship_company) ship_company
+        from bookitem where bid = #{bid}
+    </select>
+
     <resultMap id="shopCatInfo" type="map">
         <id column="cat_id" property="cat_id"/>
         <result column="mmdmoney" property="mmdmoney"/>
@@ -227,7 +242,7 @@
 
     <update id="cancelBook">
         update bookitem set state = 5, cancelreason = #{param.cancelreason}, canceltime = now()
-         where bid = #{param.bid}
+         where bid = #{param.bid} and state = 1 and recsts = '1'
     </update>
 
     <update id="releaseProdSkuStock">

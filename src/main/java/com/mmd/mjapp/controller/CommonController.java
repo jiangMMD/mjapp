@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -17,10 +18,18 @@ import java.util.Map;
 public class CommonController {
 
     @RequestMapping("/logisticsCall")
-    public Result  logisticsCall(@RequestParam Map<String, Object> params) {
+    public Map<String, Object>  logisticsCall(@RequestParam Map<String, Object> params) {
         System.out.println(params);
-        return new Result();
+        Map<String, Object> callBack = new HashMap<>();
+
+
+        //推送返回的信息
+        callBack.put("result", true);
+        callBack.put("returnCode", "200");
+        callBack.put("message", "成功");
+        return callBack;
     }
+
 
 
 }

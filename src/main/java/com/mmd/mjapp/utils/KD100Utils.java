@@ -21,7 +21,7 @@ public class KD100Utils {
     /**
      * 查询快递单号所属
      */
-    public List<String> queryKDComCode() {
+    public static List<String> queryKDComCode() {
         String url = "http://www.kuaidi100.com/autonumber/auto?num=" + PropertyLoad.getProperty("KD100.key") + "&key=" + PropertyLoad.getProperty("KD100.customer");
         String result = HttpClientUtil.sendGetRequest(url);
         List<Map<String, String>> resMap = JSONObject.parseObject(result, List.class);
@@ -36,32 +36,66 @@ public class KD100Utils {
     /**
      * 查询订单信息
      */
-    public List<Map<String, Object>> queryKDExpress(String com, String nu) {
+    public static Map<String, Object> queryKDExpress(String com, String num) {
         String url = "https://poll.kuaidi100.com/poll/query.do";
         String key = PropertyLoad.getProperty("KD100.key");
         String customer = PropertyLoad.getProperty("KD100.customer");
         Map param = new HashMap();
         param.put("com", com);
-        param.put("nu", nu);
+        param.put("num", num);
+        param.put("resultv2", 1);
         String jsonPar = JSON.toJSONString(param);
-        String sign = DigestUtils.md5DigestAsHex((jsonPar + key + customer).getBytes());
+        System.out.println(param);
+        String sign = DigestUtils.md5DigestAsHex((jsonPar + key + customer).getBytes()).toUpperCase();
         Map<String, String> reqParams = new HashMap<>();
         reqParams.put("param", jsonPar);
         reqParams.put("sign", sign);
         reqParams.put("customer", customer);
+        System.out.println(reqParams);
         String result = HttpClientUtil.sendPostRequest(reqParams, url);
 
         log.info(result);
         Map<String, Object> resMap = JSON.parseObject(result, Map.class);
         if (resMap.get("result") != null && (boolean) resMap.get("result") == false) {
-            throw new ResultException("没有找到该订单信息，请确保订单号正确");
+            throw new ResultException("查询失败！"+resMap.get("message"));
         }
         if ("ok".equals(resMap.get("message"))) {
+            Map<String, Object> resultMap = new HashMap<>();
             List<Map<String, Object>> jList = (List<Map<String, Object>>) resMap.get("data");
-            return jList;
+            resultMap.put("data", jList);
+            resultMap.put("ischeck", resMap.get("ischeck")); //是否已签收
+            resultMap.put("ship_no", resMap.get("nu")); //订单号
+            resultMap.put("state", resMap.get("state")); //订单状态
+            return resultMap;
         }
         throw new ResultException("查询失败！");
     }
 
+    /**
+     * 订阅订单
+     */
+    public static Result subLogistics(String com, String num) {
+        //订阅接口
+        String url = "https://poll.kuaidi100.com/poll";
+        Map<String, Object> map = new HashMap<>();
+        map.put("schema", "json");
+        Map<String, Object> paramMap = new HashMap<>();
+        paramMap.put("company", com);
+        paramMap.put("number", num);
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("callbackurl", "http://47.99.103.214:8070/mjapp/common/logisticsCall");
+        paramMap.put("parameters", parameters);
+        paramMap.put("key", PropertyLoad.getProperty("KD100.key"));
+        map.put("param", JSON.toJSONString(paramMap));
+
+        System.out.println(map);
+        String result = HttpClientUtil.sendPostRequest(map, url);
+        Map<String, Object> res = JSONObject.parseObject(result, Map.class);
+        if ((boolean) res.get("result")) {
+            return new Result().success();
+        } else {
+            return new Result(0, String.valueOf(res.get("message")));
+        }
+    }
 
 }

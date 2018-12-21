@@ -15,4 +15,10 @@ public class RedisKey {
 
     //积分设置
     public static final String BUYINTEGRAL = "buyintegral"; //购物积分
+
+    //待还订单, set集合
+    public static final String TOBEPAY = "tobepay";
+
+    //通知发货
+    public static final String INFORMSHIP = "informship";
 }

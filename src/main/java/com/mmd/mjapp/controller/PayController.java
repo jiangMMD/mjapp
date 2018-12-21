@@ -22,6 +22,9 @@ public class PayController {
     @Autowired
     private PayService payService;
 
+    /**
+     * 线上使用MMD支付
+     */
     @PostMapping("/prodPayWithMMD")
     public Result prodPayWithMMD(@RequestBody Map<String, Object> param) throws Exception {
         System.out.println(param);
@@ -34,6 +37,26 @@ public class PayController {
         }else if(PublicUtil.isEmptyObj(param.get("yzmToken"))) {
             return new Result().fail("验证码TOKEN不能为空！");
         }
+        //添加到rabbit中去
+
         return payService.prodPayWithMMD(param);
     }
+
+    /**
+     * 线下使用MMD支付
+     */
+    @PostMapping("/offlinePayWithMMD")
+    public Result offlinePayWithMMD(@RequestBody Map<String, Object> param) throws Exception {
+        if(PublicUtil.isEmptyObj(param.get("offmer_id"))) {
+            return new Result().fail("商家ID不能为空！");
+        }else if(PublicUtil.isEmptyObj(param.get("money"))) {
+            return new Result().fail("金额不能为空！");
+        }else if(PublicUtil.isEmptyObj(param.get("yzmCode"))) {
+            return new Result().fail("验证码不能为空！");
+        }else if(PublicUtil.isEmptyObj(param.get("yzmToken"))) {
+            return new Result().fail("验证码TOKEN不能为空！");
+        }
+        return payService.offlinePayWithMMD(param);
+    }
+
 }

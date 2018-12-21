@@ -55,7 +55,7 @@ public interface BookDao {
 
     void updateBookToPayMMDSuccessByBids(@Param("bookItems") List<String> bookItems, @Param("totalDoubleMMDPrice") Double totalDoubleMMDPrice, @Param("payway") int payway);
 
-    void cancelBook(@Param("param") Map<String, Object> param);
+    int cancelBook(@Param("param") Map<String, Object> param);
 
     void releaseProdSkuStock(@Param("map") Map<String, Object> map);
 
@@ -70,4 +70,10 @@ public interface BookDao {
     void insertBookOperLog(@Param("bid") String bid, @Param("type") int type, @Param("operdesc") String operdesc);
 
     void cfmBook(@Param("bid") String bid);
+
+    List<String> getAllBookByPickId(@Param("bid") String bid);
+
+    Map<String, String> getBookNoByBid(@Param("bid") String bid);
+
+    void createOffBook(@Param("param") Map<String, Object> param);
 }
