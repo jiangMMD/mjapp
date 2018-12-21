@@ -27,7 +27,7 @@ public interface ProductDao {
 
     List<Map<String, Object>> getBrowList(@Param("dateList") List<String> dateList, @Param("uid") Long uid);
 
-    List<Map<String, Object>> getSigthWord();
+    List<Map<String, Object>> getSigthWord(@Param("type") String type);
 
     List<Map<String,Object>> getProdEvaluate(@Param("pid") String pid);
 

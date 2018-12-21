@@ -87,8 +87,11 @@ public class ProductController {
      * 查询评价常用词
      */
     @PostMapping("getSightWord")
-    public Result getSightWord() throws Exception {
-        return productService.getSightWord();
+    public Result getSightWord(@RequestBody Map<String, Object> param) throws Exception {
+        if(PublicUtil.isEmptyObj(param.get("type"))) {
+            return new Result().fail("Type不能为空！");
+        }
+        return productService.getSightWord(param);
     }
 
     /**

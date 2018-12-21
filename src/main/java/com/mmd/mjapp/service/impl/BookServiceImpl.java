@@ -585,6 +585,16 @@ public class BookServiceImpl implements BookService {
         return new Result().success(resMap);
     }
 
+    /**
+     * 评价词表ID
+     */
+    @Override
+    public Result offBookEvaluate(Map<String, Object> param) {
+        User user = getUserInfo();
+        bookDao.insertOffBookEvaluate(user.getuId(), param);
+        return new Result().success();
+    }
+
     private User getUserInfo() {
         return (User) request.getAttribute("user");
     }

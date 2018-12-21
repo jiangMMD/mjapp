@@ -76,4 +76,12 @@ public interface BookDao {
     Map<String, String> getBookNoByBid(@Param("bid") String bid);
 
     void createOffBook(@Param("param") Map<String, Object> param);
+
+    List<Map<String,Object>> getBookItemList(@Param("uid") Long uid, @Param("state") String state);
+
+    Map<String,Object> getBookItemDetailList(@Param("bid") String bid);
+
+    Map<String,Object> getOffBook(@Param("bid") String bid);
+
+    void insertOffBookEvaluate(@Param("uid") Long uid, @Param("param") Map<String, Object> param);
 }

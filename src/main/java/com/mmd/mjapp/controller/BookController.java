@@ -105,9 +105,11 @@ public class BookController {
      * 查询订单信息， 我的全部订单
      */
     @PostMapping("/getBookList")
-    public Result getAllBookList(@RequestBody(required = false) Map<String, Object> params) {
+    public Result getAllBookList(@RequestBody(required = false) Map<String, Object> params) throws Exception {
         String state = (params == null || params.get("state") == null) ? "" : String.valueOf(params.get("state"));
-        return bookService.getAllBookList(state);
+        System.out.println(params);
+        Page page = PublicUtil.mapToEntity(params, Page.class);
+        return bookService.getAllBookList(page, state);
     }
 
 
@@ -172,5 +174,27 @@ public class BookController {
         return bookService.queryLogistics(param);
     }
 
+    /**
+     * 线下商家评价
+     */
+    @PostMapping("/offBookEvaluate")
+    public Result offBookEvaluate(@RequestBody Map<String, Object> param) {
+        if (PublicUtil.isEmptyObj(param.get("bid"))) {
+            return new Result().fail("订单ID不能为空!");
+        }else if(PublicUtil.isEmptyObj(param.get("id"))) {
+            return new Result().fail("评价词ID不能为空!");
+        }else if(param.get("starlevel") == null){
+            return new Result().fail("评分不能为空");
+        }
+        try {
+            Integer starlevel = (Integer) param.get("starlevel");
+            if(starlevel > 5 || starlevel < 1) {
+                return new Result().fail("评分值只能在1-5之间");
+            }
+        } catch (Exception e) {
+            return new Result().fail("请传入int型评分");
+        }
+        return bookService.offBookEvaluate(param);
+    }
 
 }

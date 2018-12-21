@@ -11,7 +11,8 @@ public class RedisKey {
     public static final String BRAND = "brand";
     public static final String HOTWORD="hotword";
 
-    public static final String SIGHTWORD="sightword";
+    public static final String SIGHTWORD_OFF="sightword_off";
+    public static final String SIGHTWORD_ON="sightword_on";
 
     //积分设置
     public static final String BUYINTEGRAL = "buyintegral"; //购物积分

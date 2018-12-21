@@ -50,6 +50,12 @@
         VALUES (#{param.offmer_id}, #{param.money}, 2, 4, now())
     </insert>
 
+    <insert id="insertOffBookEvaluate">
+        insert into offline_evaluate(mer_id, bid, uid, sw_id, starlevel, evdate)
+        VALUES ((select offmer_id from offline_book ob where ob.id = #{param.bid}), #{param.bid},
+        #{uid}, #{param.id}, #{param.starlevel}, now())
+    </insert>
+
     <update id="updateCatPrice">
         update shopcat sc set
         rmbmoney = (select ifnull(sum((select price from prod_sku where sku_id = se.sku_id) * se.num), 0) from shopentry se where se.cat_id = sc.cat_id),
@@ -148,6 +154,7 @@
         <result property="state" column="state"/>
         <result property="mer_id" column="mer_id"/>
         <result property="mer_name" column="mer_name"/>
+        <result property="btype" column="btype"/>
         <collection property="prodList" ofType="map" javaType="arraylist">
             <id property="sku_id" column="sku_id"/>
             <result property="pname" column="pname"/>
@@ -195,6 +202,34 @@
         select ship_number, (select encode from express_company ec where ec.id = ship_company) ship_encode,
         (select name from express_company ec where ec.id = ship_company) ship_company
         from bookitem where bid = #{bid}
+    </select>
+
+    <select id="getBookItemList" resultType="map">
+        select * from (select bid, addtime, 1 type from bookitem where uid = #{uid} and recsts = '1'
+        <if test="state != null and state != ''">
+            AND state = #{state}
+        </if>
+        <if test="state == '' or state == '4'">
+            UNION ALL select id bid, paytime addtime, 2 type from offline_book
+        </if>) c order by c.addtime desc
+    </select>
+
+    <select id="getBookItemDetailList" resultType="map" resultMap="bookMap">
+        select bt.bid, bt.bookid packid, bt.isevaluate,
+        bt.book_no, bt.state,bt.mer_id,
+        (select mer_name from merchant m where m.mer_id = bt.mer_id) mer_name,
+        bp.rmbprice,bp.mmdprice, bp.num, bp.sku_id,
+        (select sku_valname from prod_sku where prod_sku.sku_id = bp.sku_id) sku_valname,
+        p.pname, p.homeimg, 1 btype
+        from bookitem bt left join bookprod bp on bt.bid = bp.bid
+        left join productsinfo p on bp.pid = p.pid
+        where bt.recsts = '1' and bt.bid = #{bid}
+    </select>
+
+    <select id="getOffBook" resultType="map">
+        select id bid, om.mer_name, om.mer_homeimg,
+         ob.money, ob.bookno, ob.paytype, date_format(ob.paytime, '%Y-%m-%d %T') paytime, ob.isevaluate, 2 btype
+         from offline_book ob left join offline_merchant om on offmer_id =  mer_id  where id = #{bid}
     </select>
 
     <resultMap id="shopCatInfo" type="map">

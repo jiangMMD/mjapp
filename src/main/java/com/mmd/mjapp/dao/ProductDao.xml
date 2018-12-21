@@ -99,7 +99,7 @@
 
     <!--查询常用词-->
     <select id="getSigthWord" resultType="map">
-        select * from sightword
+        select id, word from sightword where state = #{type} or state is NULL
     </select>
 
     <!--查询产品评价信息-->

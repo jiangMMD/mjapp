@@ -100,7 +100,7 @@ public class ProductServiceImpl implements ProductService {
                 }
             }
         }
-        if(dateList.size() == 0) {
+        if (dateList.size() == 0) {
             return new Result().success(new ArrayList<>());
         }
         return new Result().success(productDao.getBrowList(dateList, user.getuId()));
@@ -108,20 +108,39 @@ public class ProductServiceImpl implements ProductService {
 
     /**
      * 加载常用评语
+     *
+     * @param param
      * @return
      */
     @Override
-    public Result getSightWord() throws Exception {
-        Object object = redisUtils.get(RedisKey.SIGHTWORD);
-        if(object == null) {
-            List<Map<String, Object>> list = productDao.getSigthWord();
-            if(list != null && list.size() > 0) {
-                redisUtils.setTempObj(RedisKey.SIGHTWORD, list);
+    public Result getSightWord(Map<String, Object> param) throws Exception {
+        String type = String.valueOf(param.get("type"));
+        if ("0".equals(type)) {
+            Object object = redisUtils.getObj(RedisKey.SIGHTWORD_ON);
+            if (object == null) {
+                List<Map<String, Object>> list = productDao.getSigthWord(type);
+                if (list != null && list.size() > 0) {
+                    redisUtils.setTempObj(RedisKey.SIGHTWORD_ON, list);
+                }
+                return new Result().success(list);
             }
+            List<Map<String, Object>> list = (List<Map<String, Object>>) object;
             return new Result().success(list);
+        } else if("1".equals(type)) {
+            Object object = redisUtils.getObj(RedisKey.SIGHTWORD_OFF);
+            if (object == null) {
+                List<Map<String, Object>> list = productDao.getSigthWord(type);
+                if (list != null && list.size() > 0) {
+                    redisUtils.setTempObj(RedisKey.SIGHTWORD_OFF, list);
+                }
+                return new Result().success(list);
+            }
+            List<Map<String, Object>> list = (List<Map<String, Object>>) object;
+            return new Result().success(list);
+        }else{
+            return new Result().fail("Type值错误！");
         }
-        List<Map<String, Object>> list = (List<Map<String, Object>>) object;
-        return new Result().success(list);
+
     }
 
     /**
@@ -136,6 +155,7 @@ public class ProductServiceImpl implements ProductService {
 
     /**
      * 保存评价
+     *
      * @param params
      * @return
      */
@@ -143,12 +163,12 @@ public class ProductServiceImpl implements ProductService {
     public Result saveEvaluate(Map<String, Object> params) {
         User user = getUserInfo();
         Map<String, Object> resMap = productDao.getOldEvaluate(String.valueOf(params.get("bid")));
-        if(resMap != null) {
+        if (resMap != null) {
             //更新产品的总评论
             productDao.updateProdOldEvel(resMap);
         }
         //新的评分
-        Integer starlevel = (Integer)params.get("starlevel");
+        Integer starlevel = (Integer) params.get("starlevel");
         //新增评论信息
         productDao.saveEvaluate(params, user.getuId());
         productDao.updateProdEvel(starlevel, String.valueOf(params.get("bid")), String.valueOf(params.get("id")));
@@ -158,6 +178,7 @@ public class ProductServiceImpl implements ProductService {
 
     /**
      * 查询收藏的产品
+     *
      * @param page
      */
     @Override

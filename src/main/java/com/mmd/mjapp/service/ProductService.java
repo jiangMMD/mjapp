@@ -18,7 +18,7 @@ public interface ProductService {
 
     Result getBrowProdList();
 
-    Result getSightWord() throws Exception;
+    Result getSightWord(Map<String, Object> param) throws Exception;
 
     Result getProdEvaluate(Page page, String pid);
 

@@ -18,7 +18,7 @@ public interface BookService {
 
     Result confirmBook(Map<String, Object> params) throws Exception;
 
-    Result getAllBookList(String state);
+    Result getAllBookList(Page page, String state);
 
     Result getBookDetail(String bid);
 
@@ -31,4 +31,6 @@ public interface BookService {
     Result remindDeliver(Map<String, Object> param) throws Exception;
 
     Result queryLogistics(Map<String, Object> param);
+
+    Result offBookEvaluate(Map<String, Object> param);
 }
