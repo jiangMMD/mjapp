@@ -108,7 +108,6 @@ public class ProductServiceImpl implements ProductService {
 
     /**
      * 加载常用评语
-     *
      * @param param
      * @return
      */
