@@ -60,6 +60,7 @@ public class OfflineMerchant {
     private Integer isHot;
 
     public String getMerTime() {
+
         return merTime;
     }
 
